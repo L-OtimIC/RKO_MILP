@@ -99,6 +99,17 @@ double Decoder(TSol &s, const TProblemData &data)
 
 
 /************************************************************************************
+ Method: Separate
+ Description: Problem-specific separation method to generate violated cut (d^T x <= rhs)
+              (To be implemented by the user for the specific problem)
+*************************************************************************************/
+bool Separate(const TSol &s, const TProblemData &data, TConstr &cut)
+{
+    // TODO: Implement the separation problem with your supervisor
+    return false;
+}
+
+/************************************************************************************
  Method: FreeMemoryProblem
  Description: Free local memory allocate by Problem
 *************************************************************************************/

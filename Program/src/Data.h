@@ -17,6 +17,16 @@ struct TSol
 };
 
 /***********************************************************************************
+ Struct: TConstr
+ Description: struct to represent a solution constraint
+************************************************************************************/
+struct TConstr
+{
+    std::vector <double> coeff; // Coeficientes multiplicadores d_j
+    double rhs = 0.0;           // Right-hand side c_i (d^T x <= rhs)
+};
+
+/***********************************************************************************
  Struct: TRun
  Description: struct to variables use during the search process
 ************************************************************************************/

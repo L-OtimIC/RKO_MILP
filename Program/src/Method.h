@@ -170,6 +170,42 @@ void UpdatePoolSolutions(TSol s, const char*  mh, const int debug)
 }
 
 /************************************************************************************
+ Method: UpdateCuts
+ Description: Algorithm 2 from RKO_MILP: iterates over decoded solutions X (pool),
+              calls separate(P, x) for each solution, and updates the constraint pool (D, c).
+*************************************************************************************/
+void UpdateCuts(const std::vector<TSol> &solPool, const TProblemData &data)
+{
+    #pragma omp critical(constr_pool_lock)
+    {
+        for (size_t p = 0; p < solPool.size(); p++)
+        {
+            TConstr cut; //Essa criança aqui tem que ser um vector pois uma mesma solução poderia ter várias restrições associadas a ela
+            // (s, k) <- separate(P, x_bar)
+            if (Separate(solPool[p], data, cut))
+            {
+                // Verify if cut (D, c) already exists in constrPool
+                bool exists = false;
+                for (size_t i = 0; i < constrPool.size(); i++)
+                {
+                    if (constrPool[i].rhs == cut.rhs && constrPool[i].coeff == cut.coeff)
+                    {
+                        exists = true;
+                        break;
+                    }
+                }
+
+                // D <- D U {s}, c <- c U {k}
+                if (!exists)
+                {
+                    constrPool.push_back(cut);
+                }
+            }
+        }
+    }
+}
+
+/************************************************************************************
  Method: ShakeSolution
  Description: Shake the current solution
 *************************************************************************************/

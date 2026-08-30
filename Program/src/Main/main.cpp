@@ -38,7 +38,10 @@ std::mt19937 rng;
 std::atomic<bool> stop_execution(false);    
 
 // pool of best solutions with diversity
-std::vector <TSol> pool;                    
+std::vector <TSol> pool;   
+
+// pool of constraint
+std::vector <TConstr> constrPool;
 
 // RKO library
 #include "../Problem/Problem.h"
@@ -257,6 +260,9 @@ int main(int argc, char *argv[ ])
                     // store the best solution found
                     if (pool[0].ofv < bestSolutionRun.ofv)
                         bestSolutionRun = pool[0];
+
+                    // Update cuts using all solutions from pool X (Algorithm 1 & 2)
+                    UpdateCuts(pool, data);
 
                     // restart the pool of solutions in case of restart
                     if (end_time - start_time < runData.MAXTIME)

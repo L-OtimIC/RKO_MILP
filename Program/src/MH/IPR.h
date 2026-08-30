@@ -134,7 +134,7 @@ void IPR(const TRunData &runData, const TProblemData &data)
         #pragma omp critical
         {
             UpdatePoolSolutions(bestPath, method, runData.debug);
-            UpdateCuts(bestPath, data);
+            UpdatePoolConstraints(bestPath, data);
         }
     }
 }

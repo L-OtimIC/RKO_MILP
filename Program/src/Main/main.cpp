@@ -42,7 +42,7 @@ std::atomic<bool> stop_execution(false);
 std::vector <TSol> pool;   
 
 // pool of constraints: id -> TConstr
-std::unordered_map<int, TConstr> constrPool;
+std::unordered_map<int, TConstr> constraintPool;
 
 // auto-increment ID for new constraints
 std::atomic<int> nextConstrId(0);

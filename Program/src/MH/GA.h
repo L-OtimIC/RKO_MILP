@@ -244,7 +244,7 @@ void GA(const TRunData &runData, const TProblemData &data)
                 #pragma omp critical
                 {
                     UpdatePoolSolutions(bestInd, method, runData.debug);
-                    UpdateCuts(bestInd, data);
+                    UpdatePoolConstraints(bestInd, data);
                 }
             }
 
@@ -257,7 +257,7 @@ void GA(const TRunData &runData, const TProblemData &data)
                 #pragma omp critical
                 {
                     UpdatePoolSolutions(bestInd, method, runData.debug);
-                    UpdateCuts(bestInd, data);
+                    UpdatePoolConstraints(bestInd, data);
                 }
             }
 
@@ -283,7 +283,7 @@ void GA(const TRunData &runData, const TProblemData &data)
             #pragma omp critical
             {
                 UpdatePoolSolutions(bestInd, method, runData.debug);
-                UpdateCuts(bestInd, data);
+                UpdatePoolConstraints(bestInd, data);
             }
         }
            

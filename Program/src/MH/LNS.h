@@ -204,7 +204,7 @@ void LNS(const TRunData &runData, const TProblemData &data)
                     #pragma omp critical
                     {
                         UpdatePoolSolutions(s, method, runData.debug);
-                        UpdateCuts(s, data);
+                        UpdatePoolConstraints(s, data);
                     }
                 }
             }

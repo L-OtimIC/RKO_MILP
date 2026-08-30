@@ -37,7 +37,7 @@ void MultiStart(const TRunData &runData, const TProblemData &data)
             #pragma omp critical
             {
                 UpdatePoolSolutions(sBest, method, runData.debug);
-                UpdateCuts(sBest, data);
+                UpdatePoolConstraints(sBest, data);
             }
 		}
 

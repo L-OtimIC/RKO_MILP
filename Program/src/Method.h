@@ -160,12 +160,12 @@ void UpdatePoolSolutions(TSol &s, const char* mh, const int debug)
             TSol evicted = pool[pool.size()-1];
             for (int id : evicted.sol_constraints)
             {
-                auto it = constrPool.find(id);
-                if (it != constrPool.end())
+                auto it = constraintPool.find(id);
+                if (it != constraintPool.end())
                 {
                     it->second.counter--;
                     if (it->second.counter == 0)
-                        constrPool.erase(it);
+                        constraintPool.erase(it);
                 }
             }
 
@@ -181,12 +181,12 @@ void UpdatePoolSolutions(TSol &s, const char* mh, const int debug)
 }
 
 /************************************************************************************
- Method: UpdateCuts
- Description: Calls Separate for one solution, adds new cuts to constrPool, and
+ Method: UpdatePoolConstraints
+ Description: Calls Separate for one solution, adds new cuts to constraintPool, and
               records each cut ID in s.sol_constraints. If a cut already exists
               in the pool, the solution is still associated to it (counter incremented).
 *************************************************************************************/
-void UpdateCuts(TSol &s, const TProblemData &data)
+void UpdatePoolConstraints(TSol &s, const TProblemData &data)
 {
     {
         // cuts <- Separate(P, x_bar)
@@ -196,7 +196,7 @@ void UpdateCuts(TSol &s, const TProblemData &data)
         {
             // Search for an existing cut with the same coefficients and rhs
             int foundId = -1;
-            for (auto &[id, constr] : constrPool)
+            for (auto &[id, constr] : constraintPool)
             {
                 if (constr.rhs == cut.rhs && constr.coeff == cut.coeff)
                 {
@@ -211,13 +211,13 @@ void UpdateCuts(TSol &s, const TProblemData &data)
                 int newId = nextConstrId.fetch_add(1);
                 cut.id      = newId;
                 cut.counter = 1;
-                constrPool[newId] = cut;
+                constraintPool[newId] = cut;
                 foundId = newId;
             }
             else
             {
                 // Cut already exists: increment its reference counter
-                constrPool[foundId].counter++;
+                constraintPool[foundId].counter++;
             }
 
             // Record the stable ID in the solution

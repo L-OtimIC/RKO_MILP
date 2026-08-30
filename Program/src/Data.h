@@ -15,7 +15,7 @@ struct TSol
     double best_time = 0.0;                               // computational time to find the solution
     char nameMH[256];                                     // name of the metaheuristic that found the solution
 
-    std::vector<int> sol_constraints;                     // IDs of constraints in constrPool associated with this solution
+    std::vector<int> sol_constraints;                     // IDs of constraints in constraintPool associated with this solution
 };
 
 /***********************************************************************************

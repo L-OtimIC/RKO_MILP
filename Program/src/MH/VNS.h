@@ -155,7 +155,7 @@ void VNS(const TRunData &runData, const TProblemData &data)
                     #pragma omp critical
                     {
                         UpdatePoolSolutions(sBestLine, method, runData.debug);
-                        UpdateCuts(sBestLine, data);
+                        UpdatePoolConstraints(sBestLine, data);
                     }
                 }
             }

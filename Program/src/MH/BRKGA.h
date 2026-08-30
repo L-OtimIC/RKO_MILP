@@ -279,7 +279,7 @@ void BRKGA(const TRunData &runData, const TProblemData &data)
             #pragma omp critical
             {
                 UpdatePoolSolutions(Pop[0], method, runData.debug);
-                UpdateCuts(Pop[0], data);
+                UpdatePoolConstraints(Pop[0], data);
             }
         }
 

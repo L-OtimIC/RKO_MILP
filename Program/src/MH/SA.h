@@ -163,7 +163,7 @@ void SA(const TRunData &runData, const TProblemData &data)
                         #pragma omp critical
                         {
                             UpdatePoolSolutions(s, method, runData.debug);
-                            UpdateCuts(s, data);
+                            UpdatePoolConstraints(s, data);
                         }
                     }
                 }
@@ -225,7 +225,7 @@ void SA(const TRunData &runData, const TProblemData &data)
                 #pragma omp critical
                 {
                     UpdatePoolSolutions(sBest, method, runData.debug);
-                    UpdateCuts(sBest, data);
+                    UpdatePoolConstraints(sBest, data);
                 }
             }
 

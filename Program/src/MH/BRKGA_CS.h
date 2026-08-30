@@ -236,7 +236,7 @@ void BRKGA_CS(const TRunData &runData, const TProblemData &data)
             #pragma omp critical
             {
                 UpdatePoolSolutions(bestInd, method, runData.debug);
-                UpdateCuts(bestInd, data);
+                UpdatePoolConstraints(bestInd, data);
             }
         }
 
@@ -331,7 +331,7 @@ void BRKGA_CS(const TRunData &runData, const TProblemData &data)
                     #pragma omp critical
                     {
                         UpdatePoolSolutions(bestInd, method, runData.debug);
-                        UpdateCuts(bestInd, data);
+                        UpdatePoolConstraints(bestInd, data);
                     }
                 }
 

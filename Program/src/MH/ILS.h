@@ -95,7 +95,7 @@ void ILS(const TRunData &runData, const TProblemData &data)
     #pragma omp critical
     {
         UpdatePoolSolutions(sBest, method, runData.debug);
-        UpdateCuts(sBest, data);
+        UpdatePoolConstraints(sBest, data);
     }
 
     // terminate the search process in MAXTIME
@@ -150,7 +150,7 @@ void ILS(const TRunData &runData, const TProblemData &data)
             #pragma omp critical
             {
                 UpdatePoolSolutions(sBest, method, runData.debug);
-                UpdateCuts(sBest, data);
+                UpdatePoolConstraints(sBest, data);
             }
         }
         // else

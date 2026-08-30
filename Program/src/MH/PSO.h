@@ -287,7 +287,7 @@ void PSO(const TRunData &runData, const TProblemData &data)
             #pragma omp critical
             {
                 UpdatePoolSolutions(Gbest, method, runData.debug);
-                UpdateCuts(Gbest, data);
+                UpdatePoolConstraints(Gbest, data);
             }
         }
 

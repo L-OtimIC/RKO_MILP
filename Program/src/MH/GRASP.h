@@ -299,7 +299,11 @@ void GRASP(const TRunData &runData, const TProblemData &data)
                 improv = 1;
 
                 // update the pool of solutions
-                UpdatePoolSolutions(sLineBest, method, runData.debug);
+                #pragma omp critical
+                {
+                    UpdatePoolSolutions(sLineBest, method, runData.debug);
+                    UpdateCuts(sLineBest, data);
+                }
             }
             // make grid more dense
             else{

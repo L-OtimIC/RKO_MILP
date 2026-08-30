@@ -276,7 +276,11 @@ void BRKGA(const TRunData &runData, const TProblemData &data)
             bestInd = Pop[0];
         
             // Update pool of solutions
-            UpdatePoolSolutions(Pop[0], method, runData.debug);
+            #pragma omp critical
+            {
+                UpdatePoolSolutions(Pop[0], method, runData.debug);
+                UpdateCuts(Pop[0], data);
+            }
         }
 
         // if (runData.debug) 

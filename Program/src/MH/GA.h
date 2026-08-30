@@ -241,7 +241,11 @@ void GA(const TRunData &runData, const TProblemData &data)
                 improv = 1;
 
                 // update pool of solutions
-                UpdatePoolSolutions(bestInd, method, runData.debug);
+                #pragma omp critical
+                {
+                    UpdatePoolSolutions(bestInd, method, runData.debug);
+                    UpdateCuts(bestInd, data);
+                }
             }
 
             if (PopNew[i+1].ofv < bestInd.ofv){
@@ -250,7 +254,11 @@ void GA(const TRunData &runData, const TProblemData &data)
                 improv = 1;
 
                 // update pool of solutions
-                UpdatePoolSolutions(bestInd, method, runData.debug);
+                #pragma omp critical
+                {
+                    UpdatePoolSolutions(bestInd, method, runData.debug);
+                    UpdateCuts(bestInd, data);
+                }
             }
 
             // set the best offspring
@@ -272,7 +280,11 @@ void GA(const TRunData &runData, const TProblemData &data)
             bestGeneration = numGenerations;
 
             // update pool of solutions
-            UpdatePoolSolutions(bestInd, method, runData.debug);
+            #pragma omp critical
+            {
+                UpdatePoolSolutions(bestInd, method, runData.debug);
+                UpdateCuts(bestInd, data);
+            }
         }
            
         // replace the population with offspring

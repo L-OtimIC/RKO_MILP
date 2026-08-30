@@ -201,7 +201,11 @@ void LNS(const TRunData &runData, const TProblemData &data)
                     improv = 1;
 
                     // update the pool of solutions
-                    UpdatePoolSolutions(s, method, runData.debug);
+                    #pragma omp critical
+                    {
+                        UpdatePoolSolutions(s, method, runData.debug);
+                        UpdateCuts(s, data);
+                    }
                 }
             }
             else

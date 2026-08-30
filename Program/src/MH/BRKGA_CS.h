@@ -233,7 +233,11 @@ void BRKGA_CS(const TRunData &runData, const TProblemData &data)
             noImprovBRKGA = 0;
 
             // update the pool of solutions
-            UpdatePoolSolutions(bestInd, method, runData.debug);
+            #pragma omp critical
+            {
+                UpdatePoolSolutions(bestInd, method, runData.debug);
+                UpdateCuts(bestInd, data);
+            }
         }
 
         //print
@@ -324,7 +328,11 @@ void BRKGA_CS(const TRunData &runData, const TProblemData &data)
                     noImprovBRKGA = 0;
 
                     // update the pool of solutions
-                    UpdatePoolSolutions(bestInd, method, runData.debug);
+                    #pragma omp critical
+                    {
+                        UpdatePoolSolutions(bestInd, method, runData.debug);
+                        UpdateCuts(bestInd, data);
+                    }
                 }
 
                 // printf("\n%d: \tBL: %lf", i, Pop[promisingSol[i]].ofv);

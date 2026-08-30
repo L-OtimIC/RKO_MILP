@@ -160,7 +160,11 @@ void SA(const TRunData &runData, const TProblemData &data)
                         improv = 1;
 
                         // update the pool of solutions
-                        UpdatePoolSolutions(s, method, runData.debug);
+                        #pragma omp critical
+                        {
+                            UpdatePoolSolutions(s, method, runData.debug);
+                            UpdateCuts(s, data);
+                        }
                     }
                 }
                 else
@@ -218,7 +222,11 @@ void SA(const TRunData &runData, const TProblemData &data)
                 sBest = sViz;
 
                 // update the pool of solutions
-                UpdatePoolSolutions(sBest, method, runData.debug);
+                #pragma omp critical
+                {
+                    UpdatePoolSolutions(sBest, method, runData.debug);
+                    UpdateCuts(sBest, data);
+                }
             }
 
             // terminate the search process in MAXTIME

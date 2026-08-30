@@ -152,7 +152,11 @@ void VNS(const TRunData &runData, const TProblemData &data)
                     improv = 1;
 
                     // update the pool of solutions
-                    UpdatePoolSolutions(sBestLine, method, runData.debug);
+                    #pragma omp critical
+                    {
+                        UpdatePoolSolutions(sBestLine, method, runData.debug);
+                        UpdateCuts(sBestLine, data);
+                    }
                 }
             }
             else

@@ -34,7 +34,11 @@ void MultiStart(const TRunData &runData, const TProblemData &data)
 			sBest = s;
 
             // update the pool of solutions
-            UpdatePoolSolutions(sBest, method, runData.debug);
+            #pragma omp critical
+            {
+                UpdatePoolSolutions(sBest, method, runData.debug);
+                UpdateCuts(sBest, data);
+            }
 		}
 
         IterT++;

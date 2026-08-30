@@ -19,6 +19,7 @@
 #include <utility>  
 #include <numeric>  
 #include <map>
+#include <unordered_map>
 #include <limits>
 #include <random>
 #include <chrono>
@@ -40,8 +41,11 @@ std::atomic<bool> stop_execution(false);
 // pool of best solutions with diversity
 std::vector <TSol> pool;   
 
-// pool of constraint
-std::vector <TConstr> constrPool;
+// pool of constraints: id -> TConstr
+std::unordered_map<int, TConstr> constrPool;
+
+// auto-increment ID for new constraints
+std::atomic<int> nextConstrId(0);
 
 // RKO library
 #include "../Problem/Problem.h"
@@ -260,9 +264,6 @@ int main(int argc, char *argv[ ])
                     // store the best solution found
                     if (pool[0].ofv < bestSolutionRun.ofv)
                         bestSolutionRun = pool[0];
-
-                    // Update cuts using all solutions from pool X (Algorithm 1 & 2)
-                    UpdateCuts(pool, data);
 
                     // restart the pool of solutions in case of restart
                     if (end_time - start_time < runData.MAXTIME)

@@ -126,12 +126,11 @@ void CreatePoolSolutions(const TProblemData &data, const int sizePool)
 
 /************************************************************************************
  Method: UpdatePoolSolutions
- Description: Update the pool with different solutions
+ Description: Update the pool with different solutions.
 *************************************************************************************/
-void UpdatePoolSolutions(TSol s, const char*  mh, const int debug)
+void UpdatePoolSolutions(TSol &s, const char* mh, const int debug)
 {
-    #pragma omp critical
-    {   
+    {
         // Checks if it already exists in the pool
         bool exists = false;
         for (int i = 0; i < (int)pool.size(); i++) {
@@ -142,68 +141,91 @@ void UpdatePoolSolutions(TSol s, const char*  mh, const int debug)
         }
 
         // print that a new best solution was found
-        if (s.ofv < pool[0].ofv && debug) 
+        if (s.ofv < pool[0].ofv && debug)
         {
-            // get the current thread ID
-            int thread_id = omp_get_thread_num();   
+            int thread_id = omp_get_thread_num();
             printf("\nBest solution: %.10lf (Thread: %d - MH: %s)", s.ofv, thread_id, mh);
-        } 
+        }
 
-        // Goes from back to front
         if (!exists)
         {
             // update the runtime to find this solution
             s.best_time = get_time_in_seconds();
-    
+
             // update the metaheuristic that found this solution
             strcpy(s.nameMH, mh);
 
-            // insert the new solution
-            int i;
-            for (i = (int)pool.size()-1; i > 0 && pool[i - 1].ofv > s.ofv; i--) {
-                pool[i] = pool[i - 1]; // Push to the right
+            // The last element is always the one discarded — copy it before the
+            // shift overwrites pool[size-1].
+            TSol evicted = pool[pool.size()-1];
+            for (int id : evicted.sol_constraints)
+            {
+                auto it = constrPool.find(id);
+                if (it != constrPool.end())
+                {
+                    it->second.counter--;
+                    if (it->second.counter == 0)
+                        constrPool.erase(it);
+                }
             }
 
-            pool[i] = s; 
+            // Shift elements right to open the insertion position
+            int i;
+            for (i = (int)pool.size()-1; i > 0 && pool[i - 1].ofv > s.ofv; i--) {
+                pool[i] = pool[i - 1];
+            }
+
+            pool[i] = s;
         }
     }
 }
 
 /************************************************************************************
  Method: UpdateCuts
- Description: Algorithm 2 from RKO_MILP: iterates over decoded solutions X (pool),
-              calls separate(P, x) for each solution, and updates the constraint pool (D, c).
+ Description: Calls Separate for one solution, adds new cuts to constrPool, and
+              records each cut ID in s.sol_constraints. If a cut already exists
+              in the pool, the solution is still associated to it (counter incremented).
 *************************************************************************************/
-void UpdateCuts(const std::vector<TSol> &solPool, const TProblemData &data)
+void UpdateCuts(TSol &s, const TProblemData &data)
 {
-    #pragma omp critical(constr_pool_lock)
     {
-        for (size_t p = 0; p < solPool.size(); p++)
-        {
-            TConstr cut; //Essa criança aqui tem que ser um vector pois uma mesma solução poderia ter várias restrições associadas a ela
-            // (s, k) <- separate(P, x_bar)
-            if (Separate(solPool[p], data, cut))
-            {
-                // Verify if cut (D, c) already exists in constrPool
-                bool exists = false;
-                for (size_t i = 0; i < constrPool.size(); i++)
-                {
-                    if (constrPool[i].rhs == cut.rhs && constrPool[i].coeff == cut.coeff)
-                    {
-                        exists = true;
-                        break;
-                    }
-                }
+        // cuts <- Separate(P, x_bar)
+        std::vector<TConstr> cuts = Separate(s, data);
 
-                // D <- D U {s}, c <- c U {k}
-                if (!exists)
+        for (TConstr &cut : cuts)
+        {
+            // Search for an existing cut with the same coefficients and rhs
+            int foundId = -1;
+            for (auto &[id, constr] : constrPool)
+            {
+                if (constr.rhs == cut.rhs && constr.coeff == cut.coeff)
                 {
-                    constrPool.push_back(cut);
+                    foundId = id;
+                    break;
                 }
             }
+
+            if (foundId == -1)
+            {
+                // New cut: assign a stable ID, add to pool, associate to solution
+                int newId = nextConstrId.fetch_add(1);
+                cut.id      = newId;
+                cut.counter = 1;
+                constrPool[newId] = cut;
+                foundId = newId;
+            }
+            else
+            {
+                // Cut already exists: increment its reference counter
+                constrPool[foundId].counter++;
+            }
+
+            // Record the stable ID in the solution
+            s.sol_constraints.push_back(foundId);
         }
     }
 }
+
 
 /************************************************************************************
  Method: ShakeSolution

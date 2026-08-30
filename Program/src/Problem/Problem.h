@@ -100,13 +100,14 @@ double Decoder(TSol &s, const TProblemData &data)
 
 /************************************************************************************
  Method: Separate
- Description: Problem-specific separation method to generate violated cut (d^T x <= rhs)
+ Description: Problem-specific separation method to generate violated cuts (d^T x <= rhs)
+              Returns a set of violated cuts for the given solution.
               (To be implemented by the user for the specific problem)
 *************************************************************************************/
-bool Separate(const TSol &s, const TProblemData &data, TConstr &cut)
+std::vector<TConstr> Separate(const TSol &s, const TProblemData &data)
 {
     // TODO: Implement the separation problem with your supervisor
-    return false;
+    return {};
 }
 
 /************************************************************************************

@@ -38,8 +38,8 @@ void ReadData(char name[], TProblemData &data)
     }
 
     // => read data
-    fscanf(arq, "%d", &data.nItems);
-    fscanf(arq, "%d", &data.cap);
+    int dummy = fscanf(arq, "%d", &data.nItems);
+    dummy = fscanf(arq, "%d", &data.cap);
     
     //  weigth of items
     data.w.clear();
@@ -51,8 +51,8 @@ void ReadData(char name[], TProblemData &data)
 
     for (int k=0; k<data.nItems; k++)
     {
-        fscanf(arq, "%d", &data.b[k]);
-        fscanf(arq, "%d", &data.w[k]);
+        dummy = fscanf(arq, "%d", &data.b[k]);
+        dummy = fscanf(arq, "%d", &data.w[k]);
     }
     
     // define the random-key vector size
@@ -106,8 +106,52 @@ double Decoder(TSol &s, const TProblemData &data)
 *************************************************************************************/
 std::vector<TConstr> Separate(const TSol &s, const TProblemData &data)
 {
-    // TODO: Implement the separation problem with your supervisor
-    return {};
+    // TODO: Implement the separation problem
+    // return {};
+
+    // Heuristic separation of cover inequalities for the relaxed knapsack problem
+    // i.e., when variables are assumed as continuous. For exact separation, one
+    // has to transform them to integer ones.
+    std::vector<TConstr> cuts;
+    std::vector ratios(data.n, std::tuple<int, double>{});
+
+    for (int i = 0; i < data.n; i++) {
+        ratios[i] = { i, (1.0 - s.rk[i]) / data.w[i] };
+    }
+    std::sort(ratios.begin(), ratios.end(), [](const auto &a, const auto &b) {
+      return std::get<1>(a) < std::get<1>(b);
+    });
+
+    for (int i = 0; i < data.n; i++) {
+        std::vector <int> cover;
+        cover.reserve(data.n);
+
+        // Add items within cover set by their benefit-cost ratio
+        double sum_weights = 0.0;
+        for (int j = i; j < data.n && sum_weights < data.cap; j++) {
+            const auto [item, _] = ratios[j];
+            sum_weights += data.w[item];
+            cover.push_back(item);
+        }
+
+        // Check whether the built forms a violated cut, otherwise drop it
+        double lhs = 0.0;
+        TConstr cut { };
+        cut.coeff.resize(data.n, 0.0);
+        for (const int item : cover) {
+            lhs += 1.0 - s.rk[item];
+            cut.coeff[item] = 1.0;
+        }
+
+        // Violated cut of the form \sum_{j \in C} x_j \leq |C| - 1
+        if (lhs < 1.0 - 1e-6) {
+            cut.rhs = static_cast<double>(cover.size()) - 1.0;
+            cuts.push_back(cut);
+        }
+    }
+
+    printf("Separate returned %d cuts.\n", cuts.size());
+    return cuts;
 }
 
 /************************************************************************************

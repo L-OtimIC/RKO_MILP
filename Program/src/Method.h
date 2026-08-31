@@ -247,6 +247,14 @@ void UpdatePoolConstraints(TSol &s, const TProblemData &data)
 
         // Record in the centralised NxN map (sol_id -> constr_ids)
         solToConstrs[s.id].push_back(foundId);
+
+        // Penalise solution accordingly
+        double lhs = 0.0;
+        for (int i = 0; i < data.n; ++i) {
+            lhs += s.rk[i] * cut.coeff[i];
+        }
+        double infeasibility = lhs - cut.rhs;
+        s.ofv += 100000 * (infeasibility > 0.0 ? infeasibility : 0.0);
     }
 }
 

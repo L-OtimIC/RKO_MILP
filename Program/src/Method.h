@@ -177,7 +177,11 @@ void UpdatePoolSolutions(TSol &s, const char* mh, const int debug)
         printf("\nBest solution: %.10lf (Thread: %d - MH: %s)", s.ofv, thread_id, mh);
     }
 
-    if (!exists)
+    // the worst one is the last one cause the pool is sorted ascending
+    TSol worstSol = pool[pool.size()-1];
+
+    // if is not duplicate and the new one is better than the worst
+    if (!exists && s.ofv < worstSol.ofv)
     {
         // update the runtime to find this solution
         s.best_time = get_time_in_seconds();
@@ -185,15 +189,12 @@ void UpdatePoolSolutions(TSol &s, const char* mh, const int debug)
         // update the metaheuristic that found this solution
         strcpy(s.nameMH, mh);
 
-        // Assign a stable ID to this solution before it enters the pool.
         // fetch_add is an atomic increment — returns current value then adds 1,
-        // guaranteeing each solution gets a unique id even across parallel threads.
         s.id = nextSolId.fetch_add(1);
 
-        // The last pool slot is always the one discarded when a new solution enters.
-        // Decrement its constraint counters before the shift overwrites pool[size-1].
-        TSol discarded = pool[pool.size()-1];
-        DecrementConstraintCounters(discarded);
+        // The last slot is the one being discarded — decrement its constraint
+        // counters now, before the shift overwrites pool[size-1].
+        DecrementConstraintCounters(worstSol);
 
         // Shift elements right to open the insertion position
         int i;

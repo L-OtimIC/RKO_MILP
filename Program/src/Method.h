@@ -125,6 +125,37 @@ void CreatePoolSolutions(const TProblemData &data, const int sizePool)
 }
 
 /************************************************************************************
+ Method: DecrementConstraintCounters
+ Description: For each constraint associated with the discarded solution, decrements
+              its reference counter. Constraints that reach zero are removed from
+              constraintPool. Cleans up the solToConstrs entry for that solution.
+ *************************************************************************************/
+void DecrementConstraintCounters(const TSol &discarded)
+{
+    // id == -1 means this slot was never inserted via UpdatePoolSolutions
+    // (e.g. initial solutions from CreatePoolSolutions). Those solutions
+    // were never registered in solToConstrs, so there is nothing to clean up.
+    if (discarded.id == -1)
+        return;
+
+    auto solEntry = solToConstrs.find(discarded.id);
+    if (solEntry == solToConstrs.end())
+        return;
+
+    for (int constr_id : solEntry->second)
+    {
+        auto constrEntry = constraintPool.find(constr_id);
+        if (constrEntry != constraintPool.end())
+        {
+            constrEntry->second.counter--;
+            if (constrEntry->second.counter == 0)
+                constraintPool.erase(constrEntry);
+        }
+    }
+    solToConstrs.erase(solEntry);
+}
+
+/************************************************************************************
  Method: UpdatePoolSolutions
  Description: Update the pool with different solutions.
  *************************************************************************************/
@@ -159,28 +190,10 @@ void UpdatePoolSolutions(TSol &s, const char* mh, const int debug)
         // guaranteeing each solution gets a unique id even across parallel threads.
         s.id = nextSolId.fetch_add(1);
 
-        // The last pool slot is always the one evicted when a new solution enters.
-        // We copy it before the shift below overwrites pool[size-1].
-        TSol evicted = pool[pool.size()-1];
-        if (evicted.id != -1)
-        {
-            auto solEntry = solToConstrs.find(evicted.id);
-            if (solEntry != solToConstrs.end())
-            {
-                for (int constr_id : solEntry->second)
-                {
-                    auto constr = constraintPool.find(constr_id);
-
-                    if (constr != constraintPool.end())
-                    {
-                        constr->second.counter--;
-                        if (constr->second.counter == 0)
-                            constraintPool.erase(constr);
-                    }
-                }
-                solToConstrs.erase(solEntry);
-            }
-        }
+        // The last pool slot is always the one discarded when a new solution enters.
+        // Decrement its constraint counters before the shift overwrites pool[size-1].
+        TSol discarded = pool[pool.size()-1];
+        DecrementConstraintCounters(discarded);
 
         // Shift elements right to open the insertion position
         int i;

@@ -15,7 +15,7 @@ struct TSol
     double best_time = 0.0;                               // computational time to find the solution
     char nameMH[256];                                     // name of the metaheuristic that found the solution
 
-    std::vector<int> sol_constraints;                     // IDs of constraints in constraintPool associated with this solution
+    int id = -1;                                          // Stable unique ID assigned when entering the pool
 };
 
 /***********************************************************************************
@@ -24,7 +24,7 @@ struct TSol
  ************************************************************************************/
 struct TConstr
 {
-    int id = -1;                // Stable unique ID (never changes when others are removed)
+    int id = -1;                // Mirrors the key in constraintPool (useful for debug/tracing)
     std::vector <double> coeff; // Coeficientes multiplicadores d_j
     double rhs = 0.0;           // Right-hand side c_i (d^T x <= rhs)
     int counter = 0;            // Number of pool solutions that reference this constraint

@@ -1,5 +1,10 @@
+28/08
 - Atualizar o Separete para que ele retorno um conjunto de restrições por solução
 - Chamar o UpdateCuts toda vez que o UpdatePoolSolution for chamado
 - Para fazer isso, preciso fazer um hash que linke cada restrição a sua solução, para poder "excluir" um corte de uma solução que saia do Pool de solução
 - Ideia do Sávio: Mapeamento (Hash) onde para cada solução tenho uma lista das restrições que aquela solução usa, e quando essa solução for descartada,vamos iterar sob as restrições para encontrar elas no Pool de Restrições e decrementar seu contador, que cada uma terá, em caso de zero, é descartada
 - Para sustentar a ideia de cima, quando uma restrição for dada como já existente no pool, agora, antes do break, deve-se associá-la a solução correspondente.
+
+31/08
+- Atualizar o unordedmap para respeitar que mapeio de uma SOL para várias CONSTR, ou pensar numa estrutura de dados NxN já que uma solução pode ter várias restrições e uma restrição pode pertencer a várias soluções
+- Veirificar se tem uma verificação de se uma solução vai ser adicionada ou não no pool, para ter certeza se vai subtrair o contador das restrições associadas a ultima solução

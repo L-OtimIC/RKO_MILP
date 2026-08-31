@@ -127,102 +127,112 @@ void CreatePoolSolutions(const TProblemData &data, const int sizePool)
 /************************************************************************************
  Method: UpdatePoolSolutions
  Description: Update the pool with different solutions.
-*************************************************************************************/
+ *************************************************************************************/
 void UpdatePoolSolutions(TSol &s, const char* mh, const int debug)
 {
+    // Checks if it already exists in the pool
+    bool exists = false;
+    for (int i = 0; i < (int)pool.size(); i++) {
+        if (pool[i].ofv == s.ofv) {
+            exists = true;
+            break;
+        }
+    }
+
+    // print that a new best solution was found
+    if (s.ofv < pool[0].ofv && debug)
     {
-        // Checks if it already exists in the pool
-        bool exists = false;
-        for (int i = 0; i < (int)pool.size(); i++) {
-            if (pool[i].ofv == s.ofv) {
-                exists = true;
-                break;
-            }
-        }
+        int thread_id = omp_get_thread_num();
+        printf("\nBest solution: %.10lf (Thread: %d - MH: %s)", s.ofv, thread_id, mh);
+    }
 
-        // print that a new best solution was found
-        if (s.ofv < pool[0].ofv && debug)
+    if (!exists)
+    {
+        // update the runtime to find this solution
+        s.best_time = get_time_in_seconds();
+
+        // update the metaheuristic that found this solution
+        strcpy(s.nameMH, mh);
+
+        // Assign a stable ID to this solution before it enters the pool.
+        // fetch_add is an atomic increment — returns current value then adds 1,
+        // guaranteeing each solution gets a unique id even across parallel threads.
+        s.id = nextSolId.fetch_add(1);
+
+        // The last pool slot is always the one evicted when a new solution enters.
+        // We copy it before the shift below overwrites pool[size-1].
+        TSol evicted = pool[pool.size()-1];
+        if (evicted.id != -1)
         {
-            int thread_id = omp_get_thread_num();
-            printf("\nBest solution: %.10lf (Thread: %d - MH: %s)", s.ofv, thread_id, mh);
-        }
-
-        if (!exists)
-        {
-            // update the runtime to find this solution
-            s.best_time = get_time_in_seconds();
-
-            // update the metaheuristic that found this solution
-            strcpy(s.nameMH, mh);
-
-            // The last element is always the one discarded — copy it before the
-            // shift overwrites pool[size-1].
-            TSol evicted = pool[pool.size()-1];
-            for (int id : evicted.sol_constraints)
+            auto solEntry = solToConstrs.find(evicted.id);
+            if (solEntry != solToConstrs.end())
             {
-                auto it = constraintPool.find(id);
-                if (it != constraintPool.end())
+                for (int constr_id : solEntry->second)
                 {
-                    it->second.counter--;
-                    if (it->second.counter == 0)
-                        constraintPool.erase(it);
+                    auto constr = constraintPool.find(constr_id);
+
+                    if (constr != constraintPool.end())
+                    {
+                        constr->second.counter--;
+                        if (constr->second.counter == 0)
+                            constraintPool.erase(constr);
+                    }
                 }
+                solToConstrs.erase(solEntry);
             }
-
-            // Shift elements right to open the insertion position
-            int i;
-            for (i = (int)pool.size()-1; i > 0 && pool[i - 1].ofv > s.ofv; i--) {
-                pool[i] = pool[i - 1];
-            }
-
-            pool[i] = s;
         }
+
+        // Shift elements right to open the insertion position
+        int i;
+        for (i = (int)pool.size()-1; i > 0 && pool[i - 1].ofv > s.ofv; i--) {
+            pool[i] = pool[i - 1];
+        }
+
+        pool[i] = s;
     }
 }
 
 /************************************************************************************
  Method: UpdatePoolConstraints
  Description: Calls Separate for one solution, adds new cuts to constraintPool, and
-              records each cut ID in s.sol_constraints. If a cut already exists
+              records each cut ID in solToConstrs[s.id]. If a cut already exists
               in the pool, the solution is still associated to it (counter incremented).
-*************************************************************************************/
+ *************************************************************************************/
 void UpdatePoolConstraints(TSol &s, const TProblemData &data)
 {
+    // cuts <- Separate(P, x_bar)
+    std::vector<TConstr> cuts = Separate(s, data);
+
+    for (TConstr &cut : cuts)
     {
-        // cuts <- Separate(P, x_bar)
-        std::vector<TConstr> cuts = Separate(s, data);
-
-        for (TConstr &cut : cuts)
+        // Search for an existing cut with the same coefficients and rhs
+        int foundId = -1;
+        for (auto &[id, constr] : constraintPool)
         {
-            // Search for an existing cut with the same coefficients and rhs
-            int foundId = -1;
-            for (auto &[id, constr] : constraintPool)
+            if (constr.rhs == cut.rhs && constr.coeff == cut.coeff)
             {
-                if (constr.rhs == cut.rhs && constr.coeff == cut.coeff)
-                {
-                    foundId = id;
-                    break;
-                }
+                foundId = id;
+                break;
             }
-
-            if (foundId == -1)
-            {
-                // New cut: assign a stable ID, add to pool, associate to solution
-                int newId = nextConstrId.fetch_add(1);
-                cut.id      = newId;
-                cut.counter = 1;
-                constraintPool[newId] = cut;
-                foundId = newId;
-            }
-            else
-            {
-                // Cut already exists: increment its reference counter
-                constraintPool[foundId].counter++;
-            }
-
-            // Record the stable ID in the solution
-            s.sol_constraints.push_back(foundId);
         }
+
+        if (foundId == -1)
+        {
+            // New cut: assign a stable ID, add to pool
+            int newId = nextConstrId.fetch_add(1);
+            cut.id      = newId;
+            cut.counter = 1;
+            constraintPool[newId] = cut;
+            foundId = newId;
+        }
+        else
+        {
+            // Cut already exists: increment its reference counter
+            constraintPool[foundId].counter++;
+        }
+
+        // Record in the centralised NxN map (sol_id -> constr_ids)
+        solToConstrs[s.id].push_back(foundId);
     }
 }
 

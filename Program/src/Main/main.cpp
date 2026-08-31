@@ -41,11 +41,17 @@ std::atomic<bool> stop_execution(false);
 // pool of best solutions with diversity
 std::vector <TSol> pool;   
 
-// pool of constraints: id -> TConstr
+// pool of constraints: constr_id -> TConstr
 std::unordered_map<int, TConstr> constraintPool;
 
 // auto-increment ID for new constraints
 std::atomic<int> nextConstrId(0);
+
+// auto-increment ID for solutions entering the pool
+std::atomic<int> nextSolId(0);
+
+// NxN mapping: sol_id -> list of constr_ids referenced by that solution
+std::unordered_map<int, std::vector<int>> solToConstrs;
 
 // RKO library
 #include "../Problem/Problem.h"
@@ -226,6 +232,12 @@ int main(int argc, char *argv[ ])
             pool.clear();
             pool.resize(runData.sizePool);
             CreatePoolSolutions(data, runData.sizePool);
+
+            // reset constraint structures between runs
+            constraintPool.clear();
+            solToConstrs.clear();
+            nextConstrId.store(0);
+            nextSolId.store(0);
 
             // best solution found in this run
             bestSolutionRun = pool[0];

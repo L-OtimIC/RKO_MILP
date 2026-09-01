@@ -132,9 +132,6 @@ void CreatePoolSolutions(const TProblemData &data, const int sizePool)
  *************************************************************************************/
 void DecrementConstraintCounters(const TSol &discarded)
 {
-    // id == -1 means this slot was never inserted via UpdatePoolSolutions
-    // (e.g. initial solutions from CreatePoolSolutions). Those solutions
-    // were never registered in solToConstrs, so there is nothing to clean up.
     if (discarded.id == -1)
         return;
 
@@ -214,6 +211,10 @@ void UpdatePoolSolutions(TSol &s, const char* mh, const int debug)
  *************************************************************************************/
 void UpdatePoolConstraints(TSol &s, const TProblemData &data)
 {
+    // Solution was not inserted into the pool — nothing to associate.
+    if (s.id == -1)
+        return;
+
     // cuts <- Separate(P, x_bar)
     std::vector<TConstr> cuts = Separate(s, data);
 

@@ -95,13 +95,16 @@ double Decoder(TSol &s, const TProblemData &data)
     cost = cost * -1;
 
     // Penalise solution according to constraints within pool
-    for (const auto &[_, cut] : constraintPool){
-        double lhs = 0.0;
-        for (int i = 0; i < data.n; ++i) {
-            if(sol[i] == 1) lhs += sol[i] * cut.coeff[i];
+    #pragma omp critical(pool_lock)
+    {
+        for (const auto &[_, cut] : constraintPool){
+            double lhs = 0.0;
+            for (int i = 0; i < data.n; ++i) {
+                if(sol[i] == 1) lhs += sol[i] * cut.coeff[i];
+            }
+            double infeasibility = lhs - cut.rhs;
+            cost += 100000 * (infeasibility > 0.0 ? infeasibility : 0.0);
         }
-        double infeasibility = lhs - cut.rhs;
-        cost += 100000 * (infeasibility > 0.0 ? infeasibility : 0.0);
     }
 
     return cost;

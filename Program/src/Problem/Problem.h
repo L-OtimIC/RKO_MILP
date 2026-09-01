@@ -94,9 +94,8 @@ double Decoder(TSol &s, const TProblemData &data)
     // change to minimization problem
     cost = cost * -1;
 
-    for ( const auto &cut : constraintPool){
-
-        // Penalise solution accordingly
+    // Penalise solution according to constraints within pool
+    for (const auto &[_, cut] : constraintPool){
         double lhs = 0.0;
         for (int i = 0; i < data.n; ++i) {
             if(sol[i] == 1) lhs += sol[i] * cut.coeff[i];
@@ -161,7 +160,6 @@ std::vector<TConstr> Separate(const TSol &s, const TProblemData &data)
         }
     }
 
-    printf("Separate returned %d cuts.\n", cuts.size());
     return cuts;
 }
 

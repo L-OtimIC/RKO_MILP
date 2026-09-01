@@ -93,7 +93,18 @@ double Decoder(TSol &s, const TProblemData &data)
 
     // change to minimization problem
     cost = cost * -1;
-    
+
+    for ( const auto &cut : constraintPool){
+
+        // Penalise solution accordingly
+        double lhs = 0.0;
+        for (int i = 0; i < data.n; ++i) {
+            if(sol[i] == 1) lhs += sol[i] * cut.coeff[i];
+        }
+        double infeasibility = lhs - cut.rhs;
+        cost += 100000 * (infeasibility > 0.0 ? infeasibility : 0.0);
+    }
+
     return cost;
 }
 

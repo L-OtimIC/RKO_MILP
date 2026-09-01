@@ -8,3 +8,7 @@
 31/08
 - Atualizar o unordedmap para respeitar que mapeio de uma SOL para várias CONSTR, ou pensar numa estrutura de dados NxN já que uma solução pode ter várias restrições e uma restrição pode pertencer a várias soluções
 - Veirificar se tem uma verificação de se uma solução vai ser adicionada ou não no pool, para ter certeza se vai subtrair o contador das restrições associadas a ultima solução
+
+01/09
+- Adicionar penalização das restrições (linha 251 do method.h) na função de decoder para penalizar as soluções antes de serem avaliadas e inseridas no Pool
+- Posteriomente fazer função para deixar o código mais limpo e intuitivo

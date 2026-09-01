@@ -28,6 +28,7 @@ void MultiStart(const TRunData &runData, const TProblemData &data)
         // Create the initial solution with random keys 
 		CreateInitialSolutions(s, data.n); 
         s.ofv = Decoder(s, data);
+        //
 
 		if (s.ofv < sBest.ofv)
 		{

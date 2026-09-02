@@ -28,14 +28,19 @@ void IPR(const TRunData &runData, const TProblemData &data)
     {
         // randonly choose two elite solutions
         int k1, k2;
-        do {
-            k1 = irandomico(0,pool.size()-1);
-            k2 = irandomico(0,pool.size()-1);
-        }
-        while (k1 == k2);
+        TSol atual, guia;
+        #pragma omp critical
+        {
+            do {
+                k1 = irandomico(0,pool.size()-1);
+                k2 = irandomico(0,pool.size()-1);
+            }
+            while (k1 == k2);
 
-        TSol atual = pool[k1];                      
-        TSol guia = pool[k2];                       
+            atual = pool[k1];
+            guia = pool[k2];
+        }
+
 
         TSol bestPath = atual;                 
         TSol bestIteration = atual;                

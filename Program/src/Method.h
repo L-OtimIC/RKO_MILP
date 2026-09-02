@@ -139,22 +139,22 @@ void DecrementConstraintCounters(const TSol &discarded)
     // erase() here and range-for in Decoder cannot run concurrently.
     #pragma omp critical(pool_lock)
     {
-        auto solEntry = solToConstrs.find(discarded.id);
-        if (solEntry != solToConstrs.end())
+    auto solEntry = solToConstrs.find(discarded.id);
+    if (solEntry != solToConstrs.end())
+    {
+        for (int constr_id : solEntry->second)
         {
-            for (int constr_id : solEntry->second)
+            auto constrEntry = constraintPool.find(constr_id);
+            if (constrEntry != constraintPool.end())
             {
-                auto constrEntry = constraintPool.find(constr_id);
-                if (constrEntry != constraintPool.end())
-                {
-                    constrEntry->second.counter--;
-                    if (constrEntry->second.counter == 0)
-                        constraintPool.erase(constrEntry);
-                }
+                constrEntry->second.counter--;
+                if (constrEntry->second.counter == 0)
+                    constraintPool.erase(constrEntry);
             }
-            solToConstrs.erase(solEntry);
         }
+        solToConstrs.erase(solEntry);
     }
+    } // end pool_lock
 }
 
 /************************************************************************************
@@ -227,38 +227,38 @@ void UpdatePoolConstraints(TSol &s, const TProblemData &data)
     // so writes here and reads in Decoder cannot run concurrently.
     #pragma omp critical(pool_lock)
     {
-        for (TConstr &cut : cuts)
+    for (TConstr &cut : cuts)
+    {
+        // Search for an existing cut with the same coefficients and rhs
+        int foundId = -1;
+        for (auto &[id, constr] : constraintPool)
         {
-            // Search for an existing cut with the same coefficients and rhs
-            int foundId = -1;
-            for (auto &[id, constr] : constraintPool)
+            if (constr.rhs == cut.rhs && constr.coeff == cut.coeff)
             {
-                if (constr.rhs == cut.rhs && constr.coeff == cut.coeff)
-                {
-                    foundId = id;
-                    break;
-                }
+                foundId = id;
+                break;
             }
-
-            if (foundId == -1)
-            {
-                // New cut: assign a stable ID, add to pool
-                int newId = nextConstrId.fetch_add(1);
-                cut.id      = newId;
-                cut.counter = 1;
-                constraintPool[newId] = cut;
-                foundId = newId;
-            }
-            else
-            {
-                // Cut already exists: increment its reference counter
-                constraintPool[foundId].counter++;
-            }
-
-            // Record in the centralised NxN map (sol_id -> constr_ids)
-            solToConstrs[s.id].push_back(foundId);
         }
+
+        if (foundId == -1)
+        {
+            // New cut: assign a stable ID, add to pool
+            int newId = nextConstrId.fetch_add(1);
+            cut.id      = newId;
+            cut.counter = 1;
+            constraintPool[newId] = cut;
+            foundId = newId;
+        }
+        else
+        {
+            // Cut already exists: increment its reference counter
+            constraintPool[foundId].counter++;
+        }
+
+        // Record in the centralised NxN map (sol_id -> constr_ids)
+        solToConstrs[s.id].push_back(foundId);
     }
+    } // end pool_lock
 }
 
 
@@ -357,15 +357,19 @@ void NelderMeadSearch(TSol &x1, const TProblemData &data)
 
     // elite points
     int k1, k2;
-    do {
-        k1 = irandomico(0,pool.size()-1);
-        k2 = irandomico(0,pool.size()-1);
-    }
-    while (k1 == k2);
+    TSol x2, x3;
+    #pragma omp critical
+    {
+        do {
+            k1 = irandomico(0,pool.size()-1);
+            k2 = irandomico(0,pool.size()-1);
+        }
+        while (k1 == k2);
 
-    // TSol x1 = x;
-    TSol x2 = pool[k1];
-    TSol x3 = pool[k2];
+        // TSol x1 = x;
+        x2 = pool[k1];
+        x3 = pool[k2];
+    }
 
     // internal points
     TSol x_r;

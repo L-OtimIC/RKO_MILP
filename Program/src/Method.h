@@ -135,21 +135,26 @@ void DecrementConstraintCounters(const TSol &discarded)
     if (discarded.id == -1)
         return;
 
-    auto solEntry = solToConstrs.find(discarded.id);
-    if (solEntry == solToConstrs.end())
-        return;
-
-    for (int constr_id : solEntry->second)
+    // pool_lock is the same lock used by Decoder — both must use it so that
+    // erase() here and range-for in Decoder cannot run concurrently.
+    #pragma omp critical(pool_lock)
     {
-        auto constrEntry = constraintPool.find(constr_id);
-        if (constrEntry != constraintPool.end())
+        auto solEntry = solToConstrs.find(discarded.id);
+        if (solEntry != solToConstrs.end())
         {
-            constrEntry->second.counter--;
-            if (constrEntry->second.counter == 0)
-                constraintPool.erase(constrEntry);
+            for (int constr_id : solEntry->second)
+            {
+                auto constrEntry = constraintPool.find(constr_id);
+                if (constrEntry != constraintPool.end())
+                {
+                    constrEntry->second.counter--;
+                    if (constrEntry->second.counter == 0)
+                        constraintPool.erase(constrEntry);
+                }
+            }
+            solToConstrs.erase(solEntry);
         }
     }
-    solToConstrs.erase(solEntry);
 }
 
 /************************************************************************************
@@ -215,39 +220,44 @@ void UpdatePoolConstraints(TSol &s, const TProblemData &data)
     if (s.id == -1)
         return;
 
-    // cuts <- Separate(P, x_bar)
+    // Separate does not touch the pools, so it runs outside the critical section.
     std::vector<TConstr> cuts = Separate(s, data);
 
-    for (TConstr &cut : cuts)
+    // pool_lock is the same lock held by Decoder when it reads constraintPool,
+    // so writes here and reads in Decoder cannot run concurrently.
+    #pragma omp critical(pool_lock)
     {
-        // Search for an existing cut with the same coefficients and rhs
-        int foundId = -1;
-        for (auto &[id, constr] : constraintPool)
+        for (TConstr &cut : cuts)
         {
-            if (constr.rhs == cut.rhs && constr.coeff == cut.coeff)
+            // Search for an existing cut with the same coefficients and rhs
+            int foundId = -1;
+            for (auto &[id, constr] : constraintPool)
             {
-                foundId = id;
-                break;
+                if (constr.rhs == cut.rhs && constr.coeff == cut.coeff)
+                {
+                    foundId = id;
+                    break;
+                }
             }
-        }
 
-        if (foundId == -1)
-        {
-            // New cut: assign a stable ID, add to pool
-            int newId = nextConstrId.fetch_add(1);
-            cut.id      = newId;
-            cut.counter = 1;
-            constraintPool[newId] = cut;
-            foundId = newId;
-        }
-        else
-        {
-            // Cut already exists: increment its reference counter
-            constraintPool[foundId].counter++;
-        }
+            if (foundId == -1)
+            {
+                // New cut: assign a stable ID, add to pool
+                int newId = nextConstrId.fetch_add(1);
+                cut.id      = newId;
+                cut.counter = 1;
+                constraintPool[newId] = cut;
+                foundId = newId;
+            }
+            else
+            {
+                // Cut already exists: increment its reference counter
+                constraintPool[foundId].counter++;
+            }
 
-        // Record in the centralised NxN map (sol_id -> constr_ids)
-        solToConstrs[s.id].push_back(foundId);
+            // Record in the centralised NxN map (sol_id -> constr_ids)
+            solToConstrs[s.id].push_back(foundId);
+        }
     }
 }
 

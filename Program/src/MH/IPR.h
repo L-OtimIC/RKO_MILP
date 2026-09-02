@@ -44,7 +44,7 @@ void IPR(const TRunData &runData, const TProblemData &data)
 
         int direction = 1;                          // internal (1) or external (-1) IPR
 
-        int blockSize = data.n*0.10;                // block size
+        int blockSize = std::max(1, (int)(data.n*0.10)); // block size (min 1 to avoid division by zero)
         int numBlock = data.n/blockSize;            // number of blocks
         std:: vector<int> fixedBlock(numBlock,1);   // binary vector indicating whether a block will be swapped (0) or not (1)
         int dist=0;                                 // number of different rk

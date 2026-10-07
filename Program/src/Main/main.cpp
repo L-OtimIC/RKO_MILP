@@ -41,6 +41,10 @@ std::atomic<bool> stop_execution(false);
 // pool of best solutions with diversity
 std::vector <TSol> pool;   
 
+// enables the constraint (cut) pool: separation, decoder penalty and cut bookkeeping
+// (set with the --cuts command-line flag; when false, RKO runs as the original version)
+bool useCutPool = false;
+
 // pool of constraints: constr_id -> TConstr
 std::unordered_map<int, TConstr> constraintPool;
 
@@ -81,8 +85,24 @@ int main(int argc, char *argv[ ])
     // name of the instance
     char nameInstance[256];  
 
+    if (argc < 3) {
+        printf("\nUsage: %s <instance> <maxTime> [--cuts]\n", argv[0]);
+        exit(1);
+    }
+
     strncpy(nameInstance,argv[1],255);
-    runData.MAXTIME = std::stoi(argv[2]); 
+    runData.MAXTIME = std::stoi(argv[2]);
+
+    // optional flags
+    for (int i = 3; i < argc; i++) {
+        if (strcmp(argv[i], "--cuts") == 0)
+            useCutPool = true;
+        else {
+            printf("\nERROR: unknown option %s\n", argv[i]);
+            exit(1);
+        }
+    }
+    printf("\nCut pool: %s\n", useCutPool ? "ON" : "OFF");
 
     // define the total number of metaheuristics available
     #define TOTAL_MH 11

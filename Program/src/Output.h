@@ -44,6 +44,7 @@ void WriteSolution(const char *algorithms[], int numMH, TSol s,
 				   const TProblemData &data)
 {
 	char name[256]="../Results/Solutions_RKO";
+	if (useCutPool) strcat(name,"_cuts");
 	strcat(name,".txt");
 
 	// file to write the best solution found
@@ -83,6 +84,7 @@ void WriteResults(const char *algorithms[], int numMH, double ofv,
 				  float timeTotal, char instance[])
 {
 	char name[256]="../Results/Results_RKO";
+	if (useCutPool) strcat(name,"_cuts");
 	strcat(name,".csv");
 
 	FILE *File;

@@ -132,7 +132,7 @@ void CreatePoolSolutions(const TProblemData &data, const int sizePool)
  *************************************************************************************/
 void DecrementConstraintCounters(const TSol &discarded)
 {
-    if (discarded.id == -1)
+    if (!useCutPool || discarded.id == -1)
         return;
 
     // pool_lock is the same lock used by Decoder — both must use it so that
@@ -216,8 +216,8 @@ void UpdatePoolSolutions(TSol &s, const char* mh, const int debug)
  *************************************************************************************/
 void UpdatePoolConstraints(TSol &s, const TProblemData &data)
 {
-    // Solution was not inserted into the pool — nothing to associate.
-    if (s.id == -1)
+    // Cut pool disabled, or solution was not inserted into the pool — nothing to associate.
+    if (!useCutPool || s.id == -1)
         return;
 
     // Separate does not touch the pools, so it runs outside the critical section.

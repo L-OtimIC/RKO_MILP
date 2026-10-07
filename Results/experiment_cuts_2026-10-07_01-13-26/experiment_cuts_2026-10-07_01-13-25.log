@@ -1,0 +1,23 @@
+Output folder: /Users/migueljehle/Pesquisa/RKO_MILP/Results/experiment_cuts_2026-10-07_01-13-26
+16 jobs pending, estimated time: 3.3 h
+[1/16] ../Instances/KP/00Uncorrelated/n00050/kp009.txt | original | MAXTIME 5s x 30 runs
+[2/16] ../Instances/KP/00Uncorrelated/n00050/kp009.txt | cuts | MAXTIME 5s x 30 runs
+[3/16] ../Instances/KP/00Uncorrelated/n00100/kp021.txt | original | MAXTIME 5s x 30 runs
+[4/16] ../Instances/KP/00Uncorrelated/n00100/kp021.txt | cuts | MAXTIME 5s x 30 runs
+[5/16] ../Instances/KP/00Uncorrelated/n00200/kp087.txt | original | MAXTIME 5s x 30 runs
+[6/16] ../Instances/KP/00Uncorrelated/n00200/kp087.txt | cuts | MAXTIME 5s x 30 runs
+[7/16] ../Instances/KP/00Uncorrelated/n00500/kp035.txt | original | MAXTIME 5s x 30 runs
+[8/16] ../Instances/KP/00Uncorrelated/n00500/kp035.txt | cuts | MAXTIME 5s x 30 runs
+[9/16] ../Instances/KP/00Uncorrelated/n01000/kp005.txt | original | MAXTIME 10s x 30 runs
+[10/16] ../Instances/KP/00Uncorrelated/n01000/kp005.txt | cuts | MAXTIME 10s x 30 runs
+[11/16] ../Instances/KP/00Uncorrelated/n02000/kp001.txt | original | MAXTIME 20s x 30 runs
+[12/16] ../Instances/KP/00Uncorrelated/n02000/kp001.txt | cuts | MAXTIME 20s x 30 runs
+[13/16] ../Instances/KP/00Uncorrelated/n05000/kp072.txt | original | MAXTIME 50s x 30 runs
+[14/16] ../Instances/KP/00Uncorrelated/n05000/kp072.txt | cuts | MAXTIME 50s x 30 runs
+[15/16] ../Instances/KP/00Uncorrelated/n10000/kp015.txt | original | MAXTIME 100s x 30 runs
+[16/16] ../Instances/KP/00Uncorrelated/n10000/kp015.txt | cuts | MAXTIME 100s x 30 runs
+
+Done.
+Summary: /Users/migueljehle/Pesquisa/RKO_MILP/Results/experiment_cuts_2026-10-07_01-13-26/summary.csv
+Runs:    /Users/migueljehle/Pesquisa/RKO_MILP/Results/experiment_cuts_2026-10-07_01-13-26/runs.csv
+Table:   python3 make_table_cuts.py /Users/migueljehle/Pesquisa/RKO_MILP/Results/experiment_cuts_2026-10-07_01-13-26

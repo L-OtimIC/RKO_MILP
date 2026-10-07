@@ -1,0 +1,16 @@
+instance,n,mh,variant,maxtime,runs,ofv_best,ofv_mean,ofv_std,time_best_mean,time_total_mean
+../Instances/KP/00Uncorrelated/n00050/kp009.txt,50,SA,original,1,1,-183147.0,-183147.0,,0.086,1.001
+../Instances/KP/00Uncorrelated/n00050/kp009.txt,50,SA,cuts,1,1,-177283.0,-177283.0,,0.088,1.001
+../Instances/KP/00Uncorrelated/n00100/kp021.txt,100,SA,original,1,1,-423108.0,-423108.0,,0.615,1.001
+../Instances/KP/00Uncorrelated/n00100/kp021.txt,100,SA,cuts,1,1,-417264.0,-417264.0,,0.596,1.001
+../Instances/KP/00Uncorrelated/n00200/kp087.txt,200,SA,original,1,1,-758246.0,-758246.0,,0.994,1.001
+../Instances/KP/00Uncorrelated/n00200/kp087.txt,200,SA,cuts,1,1,-747275.0,-747275.0,,0.995,1.002
+../Instances/KP/00Uncorrelated/n00500/kp035.txt,500,SA,original,1,1,-1736061.0,-1736061.0,,0.992,1.002
+../Instances/KP/00Uncorrelated/n00500/kp035.txt,500,SA,cuts,1,1,-1756275.0,-1756275.0,,1.004,1.004
+../Instances/KP/00Uncorrelated/n01000/kp005.txt,1000,SA,original,1,1,-3214162.0,-3214162.0,,1.04,1.04
+../Instances/KP/00Uncorrelated/n01000/kp005.txt,1000,SA,cuts,1,1,-3245000.0,-3245000.0,,0.922,1.026
+../Instances/KP/00Uncorrelated/n02000/kp001.txt,2000,SA,original,1,1,-6129581.0,-6129581.0,,0.986,1.445
+../Instances/KP/00Uncorrelated/n02000/kp001.txt,2000,SA,cuts,1,1,-6077375.0,-6077375.0,,0.64,1.404
+../Instances/KP/00Uncorrelated/n05000/kp072.txt,5000,SA,original,1,1,-14374566.0,-14374566.0,,2.134,2.134
+../Instances/KP/00Uncorrelated/n05000/kp072.txt,5000,SA,cuts,1,1,-14517847.0,-14517847.0,,3.946,3.966
+../Instances/KP/00Uncorrelated/n10000/kp015.txt,10000,SA,original,1,1,-27958020.0,-27958020.0,,11.814,11.814

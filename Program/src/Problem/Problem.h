@@ -74,7 +74,7 @@ double Decoder(TSol &s, const TProblemData &data)
     }
 
     // calculate the objective function value
-    int cost = 0;
+    double cost = 0;
     int totalW = 0;
     for (int i = 0; i < data.n; i++)
     {
@@ -89,7 +89,7 @@ double Decoder(TSol &s, const TProblemData &data)
 
     // penalty infeasible solutions
     int infeasible = ((data.cap)<(totalW) ? (totalW - data.cap) : (0));
-    cost = cost - (100000 * infeasible);
+    cost = cost - (100000.0 * infeasible);
 
     // change to minimization problem
     cost = cost * -1;

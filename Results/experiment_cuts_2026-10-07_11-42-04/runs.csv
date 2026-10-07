@@ -1,0 +1,16 @@
+instance,n,mh,variant,maxtime,run,ofv
+../Instances/KP/00Uncorrelated/n00050/kp009.txt,50,SA,original,1,1,-183147.0
+../Instances/KP/00Uncorrelated/n00050/kp009.txt,50,SA,cuts,1,1,-177283.0
+../Instances/KP/00Uncorrelated/n00100/kp021.txt,100,SA,original,1,1,-423108.0
+../Instances/KP/00Uncorrelated/n00100/kp021.txt,100,SA,cuts,1,1,-417264.0
+../Instances/KP/00Uncorrelated/n00200/kp087.txt,200,SA,original,1,1,-758246.0
+../Instances/KP/00Uncorrelated/n00200/kp087.txt,200,SA,cuts,1,1,-747275.0
+../Instances/KP/00Uncorrelated/n00500/kp035.txt,500,SA,original,1,1,-1736061.0
+../Instances/KP/00Uncorrelated/n00500/kp035.txt,500,SA,cuts,1,1,-1756275.0
+../Instances/KP/00Uncorrelated/n01000/kp005.txt,1000,SA,original,1,1,-3214162.0
+../Instances/KP/00Uncorrelated/n01000/kp005.txt,1000,SA,cuts,1,1,-3245000.0
+../Instances/KP/00Uncorrelated/n02000/kp001.txt,2000,SA,original,1,1,-6129581.0
+../Instances/KP/00Uncorrelated/n02000/kp001.txt,2000,SA,cuts,1,1,-6077375.0
+../Instances/KP/00Uncorrelated/n05000/kp072.txt,5000,SA,original,1,1,-14374566.0
+../Instances/KP/00Uncorrelated/n05000/kp072.txt,5000,SA,cuts,1,1,-14517847.0
+../Instances/KP/00Uncorrelated/n10000/kp015.txt,10000,SA,original,1,1,-27958020.0

@@ -144,11 +144,15 @@ std::vector<TConstr> Separate(const TSol &s, const TProblemData &data)
 
         // Add items within cover set by their benefit-cost ratio
         double sum_weights = 0.0;
-        for (int j = i; j < data.n && sum_weights < data.cap; j++) {
+        for (int j = i; j < data.n && sum_weights <= data.cap; j++) {
             const auto [item, _] = ratios[j];
             sum_weights += data.w[item];
             cover.push_back(item);
         }
+
+        // Not a cover (all items fit in the knapsack): the cut would remove feasible solutions
+        if (sum_weights <= data.cap)
+            continue;
 
         // Check whether the built forms a violated cut, otherwise drop it
         double lhs = 0.0;

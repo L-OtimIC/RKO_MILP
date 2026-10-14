@@ -4,9 +4,9 @@ Generates a LaTeX table (booktabs) comparing RKO with and without the cut pool,
 from the summary.csv of an experiment folder (produced by run_experiment_cuts.py).
 The table is written to table_cuts.tex in the same folder.
 
-F.O. is the mean objective value over the runs (as reported by RKO, minimization);
-the best (lowest) F.O. of each row is in bold. Tempo is the mean time to find the
-best solution.
+Melhor is the best (lowest) objective value over the runs and Média the mean one
+(as reported by RKO, minimization); in each row the lower Melhor and the lower Média
+are in bold. Tempo is the mean time to find the best solution.
 
 Usage (from the Scripts folder):
   python3 make_table_cuts.py                  # most recent ../Results/experiment_cuts_* folder
@@ -50,13 +50,16 @@ def main():
     df["name"] = df["instance"].map(lambda p: Path(p).stem.replace("_", r"\_"))
 
     table = df.pivot(index=["n", "name"], columns="variant",
-                     values=["ofv_mean", "time_best_mean"]).sort_index()
+                     values=["ofv_best", "ofv_mean", "time_best_mean"]).sort_index()
 
     rows = []
     for (n, name), r in table.iterrows():
+        best_o, best_c = r[("ofv_best", "original")], r[("ofv_best", "cuts")]
         orig, cuts = r[("ofv_mean", "original")], r[("ofv_mean", "cuts")]
-        rows.append(f"{name} & {n} & {fmt_ofv(orig, orig <= cuts)} & "
+        rows.append(f"{name} & {n} & {fmt_ofv(best_o, best_o <= best_c)} & "
+                    f"{fmt_ofv(orig, orig <= cuts)} & "
                     f"{fmt_time(r[('time_best_mean', 'original')])} & "
+                    f"{fmt_ofv(best_c, best_c <= best_o)} & "
                     f"{fmt_ofv(cuts, cuts <= orig)} & "
                     f"{fmt_time(r[('time_best_mean', 'cuts')])} \\\\")
 
@@ -65,11 +68,11 @@ def main():
         r"\centering",
         r"\caption{Resultados -- RKO com e sem pool de cortes (instâncias 00Uncorrelated)}",
         r"\label{tab:cuts}",
-        r"\begin{tabular}{lrrrrr}",
+        r"\begin{tabular}{lrrrrrrr}",
         r"\toprule",
-        r" & & \multicolumn{2}{c}{\textbf{RKO original}} & \multicolumn{2}{c}{\textbf{RKO + cortes}} \\",
-        r"\cmidrule(lr){3-4} \cmidrule(lr){5-6}",
-        r"Instância & $n$ & F.O. & Tempo (s) & F.O. & Tempo (s) \\",
+        r" & & \multicolumn{3}{c}{\textbf{RKO original}} & \multicolumn{3}{c}{\textbf{RKO + cortes}} \\",
+        r"\cmidrule(lr){3-5} \cmidrule(lr){6-8}",
+        r"Instância & $n$ & Melhor & Média & Tempo (s) & Melhor & Média & Tempo (s) \\",
         r"\midrule",
         *rows,
         r"\bottomrule",

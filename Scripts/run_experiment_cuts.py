@@ -23,6 +23,7 @@ Usage (from the Scripts folder, after `make clean && make` in Program):
   python3 run_experiment_cuts.py --resume ../Results/experiment_cuts_2026-10-07_14-30-00
   python3 run_experiment_cuts.py --mh all --runs 10   # each MH of the config alone
   python3 run_experiment_cuts.py --mh BRKGA SA --runs 10
+  python3 run_experiment_cuts.py --mh BRKGA --runs 10 --cuts-time-factor 2   # cuts gets 2x MAXTIME
 """
 import argparse
 import subprocess
@@ -105,6 +106,8 @@ def main():
                              "in the config (default: all MHs of the config together)")
     parser.add_argument("--runs", type=int, default=None,
                         help="MAXRUNS used with --mh (default: MAXRUNS of the config)")
+    parser.add_argument("--cuts-time-factor", type=float, default=1.0,
+                        help="multiplies MAXTIME of the cuts variant only (default: 1)")
     args = parser.parse_args()
 
     config = read_config()
@@ -154,7 +157,8 @@ def main():
             name = "../" + str(inst.relative_to(ROOT_DIR))
             for variant in VARIANTS:
                 if (name, mh or "all", variant) not in done:
-                    jobs.append((name, n, maxtime, mh, variant))
+                    t = round(maxtime * args.cuts_time_factor) if variant == "cuts" else maxtime
+                    jobs.append((name, n, t, mh, variant))
 
     total_sec = sum(job[2] * max_runs for job in jobs)
     print(f"{len(jobs)} jobs pending, estimated time: {total_sec / 3600:.1f} h")

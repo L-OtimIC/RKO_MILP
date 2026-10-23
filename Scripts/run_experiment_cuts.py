@@ -1,34 +1,21 @@
 #!/usr/bin/env python3
 """
-Experiment: RKO with and without the cut pool (--cuts) on the 00Uncorrelated KP instances.
+Runs RKO with and without the cut pool (--cuts) on the 00Uncorrelated KP instances and
+collects the results in summary.csv and runs.csv inside an experiment folder in ../Results.
 
-For each instance and variant, runs ./runRKO once (MAXRUNS runs inside, each with its own
-clock-based seed) and reads the line RKO appends to ../Results/Results_RKO[_cuts].csv.
+Requires `debug 0` in Program/config/config_tests.conf and `make` in Program.
 
-Outputs (in a new folder ../Results/experiment_cuts_YYYY-MM-DD_HH-MM-SS):
-  summary.csv : one line per (instance, variant) with mean/std of the FO
-  runs.csv    : one line per run with the individual FO values
+Examples (from the Scripts folder):
+  python3 run_experiment_cuts.py
+  python3 run_experiment_cuts.py --mh BRKGA --runs 30
+  python3 run_experiment_cuts.py --mh BRKGA --runs 10 --cuts-time-factor 2
+  python3 run_experiment_cuts.py --mh BRKGA --runs 10 --cuts-time-factor 10 --sensitivity --n 10000
+  python3 run_experiment_cuts.py --resume ../Results/teste_sensibilidade_01
 
-Requirements in config/config_tests.conf: debug 0 and MAXRUNS 30.
-An interrupted experiment can be resumed with --resume <folder>: (instance, mh, variant)
-triples already in its summary.csv are skipped.
-
-With --mh, each listed metaheuristic is run alone (RKO uses one thread per MH in the
-config, so this is the single-thread setting): the config file is rewritten for each
-job with only that MH (and MAXRUNS from --runs) and restored at the end.
-
-Usage (from the Scripts folder, after `make clean && make` in Program):
-  python3 run_experiment_cuts.py              # MAXTIME = max(5, n/100) seconds
-  python3 run_experiment_cuts.py --time 30    # fixed MAXTIME
-  python3 run_experiment_cuts.py --resume ../Results/experiment_cuts_2026-10-07_14-30-00
-  python3 run_experiment_cuts.py --mh all --runs 10   # each MH of the config alone
-  python3 run_experiment_cuts.py --mh BRKGA SA --runs 10
-  python3 run_experiment_cuts.py --mh BRKGA --runs 10 --cuts-time-factor 2   # cuts gets 2x MAXTIME
-  python3 run_experiment_cuts.py --mh BRKGA --runs 10 --cuts-time-factor 10 --sensitivity
-
-With --sensitivity, each instance runs the cuts variant first (MAXTIME x --cuts-time-factor)
-and then the original one with MAXTIME = ceil(mean time to best of the cuts variant), i.e.
-the original gets the time the cuts variant needed to reach its final solution.
+MAXTIME defaults to max(5, n/100) seconds. With --mh, each MH runs alone (single thread)
+and the config file is temporarily rewritten with that MH and MAXRUNS = --runs.
+With --sensitivity, the cuts variant runs first and the original then gets
+ceil(mean time to best of the cuts variant) as MAXTIME.
 """
 import argparse
 import math
@@ -51,7 +38,6 @@ ALL_MHS = ["BRKGA", "SA", "GRASP", "ILS", "VNS", "PSO", "GA", "LNS", "BRKGA-CS",
 
 
 def read_config():
-    """Returns the integer parameters (MAXRUNS, debug, ...) of the RKO config file."""
     params = {}
     for line in CONFIG_FILE.read_text().splitlines():
         parts = line.split()
@@ -61,12 +47,10 @@ def read_config():
 
 
 def config_mhs(text):
-    """Metaheuristics listed in the config file, in order."""
     return [l.strip() for l in text.splitlines() if l.strip() in ALL_MHS]
 
 
 def single_mh_config(text, mh, max_runs):
-    """Config text with only `mh` as metaheuristic and MAXRUNS = max_runs."""
     out, inserted = [], False
     for line in text.splitlines():
         if line.strip() in ALL_MHS:
@@ -81,14 +65,12 @@ def single_mh_config(text, mh, max_runs):
 
 
 def instance_size(path):
-    # first token of the file (some instances start with a blank line)
     with open(path) as f:
         return int(f.read(64).split()[0])
 
 
 def read_last_result(results_file):
-    """Parses the last line of Results_RKO*.csv:
-    instance \t MHs \t nRuns \t ofv_1..ofv_n \t best \t avg \t timeBest \t timeTotal"""
+    """Last line of Results_RKO*.csv: instance, MHs, runs, ofv_1..ofv_k, best, avg, tBest, tTotal."""
     lines = [l for l in results_file.read_text().splitlines() if l.strip()]
     fields = lines[-1].split("\t")
     n_runs = int(fields[2])
@@ -100,112 +82,113 @@ def append_csv(df, path):
     df.to_csv(path, mode="a", header=not path.exists(), index=False)
 
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--time", type=int, default=None,
-                        help="fixed MAXTIME in seconds (default: max(5, n/100))")
-    parser.add_argument("--resume", type=Path, default=None,
-                        help="experiment folder to resume (default: create a new one)")
-    parser.add_argument("--mh", nargs="+", default=None,
-                        help="run each of these MHs alone (single thread); 'all' = every MH "
-                             "in the config (default: all MHs of the config together)")
-    parser.add_argument("--runs", type=int, default=None,
-                        help="MAXRUNS used with --mh (default: MAXRUNS of the config)")
+    parser.add_argument("--time", type=int, help="fixed MAXTIME in seconds")
+    parser.add_argument("--n", type=int, nargs="+", help="only instances with these sizes")
+    parser.add_argument("--mh", nargs="+",
+                        help="run each MH alone; 'all' = every MH of the config")
+    parser.add_argument("--runs", type=int, help="MAXRUNS used with --mh")
     parser.add_argument("--cuts-time-factor", type=float, default=1.0,
-                        help="multiplies MAXTIME of the cuts variant only (default: 1)")
+                        help="multiplies MAXTIME of the cuts variant")
     parser.add_argument("--sensitivity", action="store_true",
-                        help="per instance, run cuts first and give the original the mean time "
-                             "to best of the cuts variant as MAXTIME")
-    args = parser.parse_args()
+                        help="original gets the mean time to best of the cuts variant")
+    parser.add_argument("--out", help="name of the experiment folder in ../Results")
+    parser.add_argument("--resume", type=Path, help="experiment folder to resume")
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
 
     config = read_config()
     if config.get("debug", 1) != 0:
-        sys.exit(f"ERROR: set 'debug 0' in {CONFIG_FILE} (debug 1 fixes the seed and writes no results)")
+        sys.exit(f"ERROR: set 'debug 0' in {CONFIG_FILE}")
+    if not (PROGRAM_DIR / "runRKO").exists():
+        sys.exit("ERROR: Program/runRKO not found, run `make` first")
     original_config = CONFIG_FILE.read_text()
 
     if args.mh is None:
         if args.runs is not None:
             sys.exit("ERROR: --runs requires --mh")
-        mhs = [None]   # all MHs of the config, in parallel
+        mhs = [None]
         max_runs = config.get("MAXRUNS", 0)
-        if max_runs != 30:
-            print(f"WARNING: MAXRUNS = {max_runs} in {CONFIG_FILE} (expected 30)")
     else:
         mhs = config_mhs(original_config) if args.mh == ["all"] else args.mh
         unknown = [m for m in mhs if m not in ALL_MHS]
         if unknown:
             sys.exit(f"ERROR: unknown MH(s) {unknown}, options: {ALL_MHS}")
-        max_runs = args.runs if args.runs is not None else config.get("MAXRUNS", 0)
+        max_runs = args.runs or config.get("MAXRUNS", 0)
 
-    if not (PROGRAM_DIR / "runRKO").exists():
-        sys.exit("ERROR: ./runRKO not found, run `make` first")
-
-    if args.resume is not None:
+    if args.resume:
         out_dir = args.resume
         if not out_dir.is_dir():
             sys.exit(f"ERROR: {out_dir} not found")
     else:
-        out_dir = RESULTS_DIR / datetime.now().strftime("experiment_cuts_%Y-%m-%d_%H-%M-%S")
+        name = args.out or datetime.now().strftime("experiment_cuts_%Y-%m-%d_%H-%M-%S")
+        out_dir = RESULTS_DIR / name
+        if out_dir.exists():
+            sys.exit(f"ERROR: {out_dir} already exists, use --resume to continue it")
         out_dir.mkdir(parents=True)
     summary_file = out_dir / "summary.csv"
     runs_file = out_dir / "runs.csv"
     print(f"Output folder: {out_dir}")
 
-    done = set()
-    cuts_time_best = {}   # (instance, mh) -> mean time to best of the cuts variant
+    done, cuts_time_best = set(), {}
     if summary_file.exists():
         summary = pd.read_csv(summary_file)
-        mh_col = summary["mh"] if "mh" in summary else ["all"] * len(summary)
-        done = set(zip(summary["instance"], mh_col, summary["variant"]))
-        for inst, mh, var, tb in zip(summary["instance"], mh_col, summary["variant"],
-                                     summary["time_best_mean"]):
-            if var == "cuts":
-                cuts_time_best[(inst, mh)] = tb
+        for row in summary.itertuples():
+            done.add((row.instance, row.mh, row.variant))
+            if row.variant == "cuts":
+                cuts_time_best[(row.instance, row.mh)] = row.time_best_mean
 
+    instances = sorted(INSTANCES_DIR.glob("*/*.txt"))
+    if args.n:
+        instances = [p for p in instances if instance_size(p) in args.n]
+    if not instances:
+        sys.exit("ERROR: no instance selected")
+
+    variants = ["cuts", "original"] if args.sensitivity else list(VARIANTS)
     jobs = []
     for mh in mhs:
-        for inst in sorted(INSTANCES_DIR.glob("*/*.txt")):
-            n = instance_size(inst)
-            maxtime = args.time if args.time is not None else max(5, n // 100)
-            name = "../" + str(inst.relative_to(ROOT_DIR))
-            variants = ["cuts", "original"] if args.sensitivity else list(VARIANTS)
+        for path in instances:
+            n = instance_size(path)
+            name = "../" + str(path.relative_to(ROOT_DIR))
+            maxtime = args.time or max(5, n // 100)
             for variant in variants:
-                if (name, mh or "all", variant) not in done:
-                    if variant == "cuts":
-                        t = round(maxtime * args.cuts_time_factor)
-                    else:
-                        t = None if args.sensitivity else maxtime   # None: set after the cuts run
-                    jobs.append((name, n, t, mh, variant))
+                if (name, mh or "all", variant) in done:
+                    continue
+                if variant == "cuts":
+                    t = round(maxtime * args.cuts_time_factor)
+                else:
+                    t = None if args.sensitivity else maxtime
+                jobs.append((name, n, t, mh or "all", variant))
 
-    # with --sensitivity the original takes at most as long as the cuts variant
     cuts_t = {(j[0], j[3]): j[2] for j in jobs if j[4] == "cuts"}
-    total_sec = sum((j[2] if j[2] is not None else cuts_t.get((j[0], j[3]), 0)) * max_runs
-                    for j in jobs)
-    print(f"{len(jobs)} jobs pending, estimated time: {'<= ' if args.sensitivity else ''}"
-          f"{total_sec / 3600:.1f} h")
+    total = sum((j[2] or cuts_t.get((j[0], j[3]), 0)) * max_runs for j in jobs)
+    print(f"{len(jobs)} jobs pending, estimated time: {total / 3600:.1f} h")
 
     try:
         run_jobs(jobs, max_runs, summary_file, runs_file, original_config, cuts_time_best)
     finally:
         CONFIG_FILE.write_text(original_config)
 
-    print(f"\nDone.\nSummary: {summary_file}\nRuns:    {runs_file}"
-          f"\nTable:   python3 make_table_cuts.py {out_dir}")
+    print(f"\nDone: {out_dir}")
 
 
 def run_jobs(jobs, max_runs, summary_file, runs_file, original_config, cuts_time_best):
     for k, (name, n, maxtime, mh, variant) in enumerate(jobs, 1):
         if maxtime is None:
-            maxtime = max(1, math.ceil(cuts_time_best[(name, mh or "all")]))
-        print(f"[{k}/{len(jobs)}] {name} | {mh or 'all MHs'} | {variant} | "
+            maxtime = max(1, math.ceil(cuts_time_best[(name, mh)]))
+        print(f"[{k}/{len(jobs)}] {datetime.now():%d/%m %H:%M} {name} | {mh} | {variant} | "
               f"MAXTIME {maxtime}s x {max_runs} runs", flush=True)
-        if mh is not None:
+
+        if mh != "all":
             CONFIG_FILE.write_text(single_mh_config(original_config, mh, max_runs))
         cmd = ["./runRKO", name, str(maxtime)] + VARIANTS[variant]
-        proc = subprocess.run(cmd, cwd=PROGRAM_DIR, stdout=subprocess.DEVNULL)
-        if proc.returncode != 0:
-            sys.exit(f"ERROR: {' '.join(cmd)} returned {proc.returncode}")
+        if subprocess.run(cmd, cwd=PROGRAM_DIR, stdout=subprocess.DEVNULL).returncode != 0:
+            sys.exit(f"ERROR: {' '.join(cmd)} failed")
 
         suffix = "_cuts" if variant == "cuts" else ""
         instance, ofvs, time_best, time_total = read_last_result(
@@ -213,22 +196,21 @@ def run_jobs(jobs, max_runs, summary_file, runs_file, original_config, cuts_time
         if instance != name:
             sys.exit(f"ERROR: last result line is for {instance}, expected {name}")
 
-        runs = pd.DataFrame({"instance": name, "n": n, "mh": mh or "all", "variant": variant,
+        runs = pd.DataFrame({"instance": name, "n": n, "mh": mh, "variant": variant,
                              "maxtime": maxtime, "run": range(1, len(ofvs) + 1), "ofv": ofvs})
         append_csv(runs, runs_file)
-
         append_csv(pd.DataFrame([{
-            "instance": name, "n": n, "mh": mh or "all", "variant": variant, "maxtime": maxtime,
+            "instance": name, "n": n, "mh": mh, "variant": variant, "maxtime": maxtime,
             "runs": len(ofvs),
             "ofv_best": runs["ofv"].min(),
             "ofv_mean": runs["ofv"].mean(),
-            "ofv_std": runs["ofv"].std(),          # sample standard deviation
+            "ofv_std": runs["ofv"].std(),
             "time_best_mean": time_best,
             "time_total_mean": time_total,
         }]), summary_file)
 
         if variant == "cuts":
-            cuts_time_best[(name, mh or "all")] = time_best
+            cuts_time_best[(name, mh)] = time_best
 
 
 if __name__ == "__main__":

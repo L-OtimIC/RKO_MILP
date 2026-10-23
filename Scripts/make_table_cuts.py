@@ -25,8 +25,8 @@ def fmt_time(t):
     return r"$\leq 0.01$" if t < 0.01 else f"{t:.2f}"
 
 
-def fmt_ofv(v, bold):
-    s = f"{v:.1f}"
+def fmt_ofv(v, bold, decimals=1):
+    s = f"{v:.{decimals}f}"
     return rf"\textbf{{{s}}}" if bold else s
 
 
@@ -35,6 +35,9 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("folder", type=Path, nargs="?", default=None,
                         help="experiment folder (default: the most recent one in ../Results)")
+    parser.add_argument("--sensitivity", action="store_true",
+                        help="table of a --sensitivity experiment (adds the MAXTIME of each "
+                             "variant), written to table_sensitivity.tex")
     args = parser.parse_args()
 
     folder = args.folder
@@ -48,6 +51,10 @@ def main():
 
     df = pd.read_csv(folder / "summary.csv")
     df["name"] = df["instance"].map(lambda p: Path(p).stem.replace("_", r"\_"))
+
+    if args.sensitivity:
+        write_sensitivity_table(df, folder / "table_sensitivity.tex")
+        return
 
     table = df.pivot(index=["n", "name"], columns="variant",
                      values=["ofv_best", "ofv_mean", "time_best_mean"]).sort_index()
@@ -77,6 +84,63 @@ def main():
         *rows,
         r"\bottomrule",
         r"\end{tabular}",
+        r"\end{table}",
+    ])
+
+    output.write_text(latex + "\n")
+    print(latex)
+    print(f"\n% written to {output}")
+
+
+def write_sensitivity_table(df, output):
+    """Like the main table, plus the MAXTIME of each variant: the cuts variant runs with a
+    large MAXTIME and the original gets the mean time to best of the cuts variant."""
+    table = df.pivot(index=["n", "name"], columns="variant",
+                     values=["maxtime", "ofv_best", "ofv_mean", "time_best_mean"]).sort_index()
+
+    rows = []
+    for (n, name), r in table.iterrows():
+        best_o, best_c = r[("ofv_best", "original")], r[("ofv_best", "cuts")]
+        orig, cuts = r[("ofv_mean", "original")], r[("ofv_mean", "cuts")]
+        # the best values are integers, so they are printed without decimals to save width
+        rows.append(f"{name} & {n} & "
+                    f"{int(r[('maxtime', 'cuts')])} & {fmt_ofv(best_c, best_c <= best_o, 0)} & "
+                    f"{fmt_ofv(cuts, cuts <= orig)} & {fmt_time(r[('time_best_mean', 'cuts')])} & "
+                    f"{int(r[('maxtime', 'original')])} & {fmt_ofv(best_o, best_o <= best_c, 0)} & "
+                    f"{fmt_ofv(orig, orig <= cuts)} & {fmt_time(r[('time_best_mean', 'original')])} \\\\")
+
+    # factor of the cuts MAXTIME over the default max(5, n/100), if the same for all instances
+    cuts = df[df["variant"] == "cuts"]
+    factors = set(round(t / max(5, n // 100), 2) for n, t in zip(cuts["n"], cuts["maxtime"]))
+    cap = f"{factors.pop():g}$\\times$ o padrão" if len(factors) == 1 else "elevado"
+    mhs = df["mh"].unique() if "mh" in df else ["all"]
+    method = "RKO" if list(mhs) == ["all"] else f"{mhs[0]} (1 thread)"
+    runs = int(df["runs"].iloc[0])
+
+    latex = "\n".join([
+        r"\begin{table}[htbp]",
+        r"\centering",
+        r"\small",
+        r"\setlength{\tabcolsep}{3pt}",
+        rf"\caption{{Teste de sensibilidade -- {method}, {runs} execuções por instância "
+        rf"(00Uncorrelated). A versão com cortes roda com $T_{{\max}}$ {cap}; a original recebe "
+        rf"como $T_{{\max}}$ o tempo médio $\bar{{t}}$ que a versão com cortes levou para "
+        rf"encontrar sua melhor solução.}}",
+        r"\label{tab:sensitivity}",
+        # shrinks the table only if it is still wider than the text (needs \usepackage{graphicx})
+        r"\resizebox{\ifdim\width>\textwidth\textwidth\else\width\fi}{!}{%",
+        r"\begin{tabular}{lrrrrrrrrr}",
+        r"\toprule",
+        rf" & & \multicolumn{{4}}{{c}}{{\textbf{{{method.split()[0]} + cortes}}}} & "
+        rf"\multicolumn{{4}}{{c}}{{\textbf{{{method.split()[0]} original}}}} \\",
+        r"\cmidrule(lr){3-6} \cmidrule(lr){7-10}",
+        r"Inst. & $n$ & $T_{\max}$ (s) & Melhor & Média & $\bar{t}$ (s) & "
+        r"$T_{\max}$ (s) & Melhor & Média & $\bar{t}$ (s) \\",
+        r"\midrule",
+        *rows,
+        r"\bottomrule",
+        r"\end{tabular}%",
+        r"}",
         r"\end{table}",
     ])
 

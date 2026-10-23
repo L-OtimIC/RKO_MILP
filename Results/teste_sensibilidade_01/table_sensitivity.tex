@@ -1,0 +1,25 @@
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\caption{Teste de sensibilidade -- BRKGA (1 thread), 10 execuções por instância (00Uncorrelated). A versão com cortes roda com $T_{\max}$ 10$\times$ o padrão; a original recebe como $T_{\max}$ o tempo médio $\bar{t}$ que a versão com cortes levou para encontrar sua melhor solução.}
+\label{tab:sensitivity}
+\resizebox{\ifdim\width>\textwidth\textwidth\else\width\fi}{!}{%
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+ & & \multicolumn{4}{c}{\textbf{BRKGA + cortes}} & \multicolumn{4}{c}{\textbf{BRKGA original}} \\
+\cmidrule(lr){3-6} \cmidrule(lr){7-10}
+Inst. & $n$ & $T_{\max}$ (s) & Melhor & Média & $\bar{t}$ (s) & $T_{\max}$ (s) & Melhor & Média & $\bar{t}$ (s) \\
+\midrule
+kp009 & 50 & 50 & \textbf{-183147} & \textbf{-183147.0} & 1.27 & 2 & \textbf{-183147} & -183106.6 & 0.29 \\
+kp021 & 100 & 50 & \textbf{-423448} & \textbf{-423355.0} & 8.40 & 9 & \textbf{-423448} & -423312.2 & 3.46 \\
+kp087 & 200 & 50 & \textbf{-765459} & \textbf{-765330.0} & 24.23 & 25 & -765372 & -765094.6 & 16.24 \\
+kp035 & 500 & 50 & \textbf{-1960671} & \textbf{-1959592.5} & 41.47 & 42 & -1959983 & -1958762.9 & 38.01 \\
+kp005 & 1000 & 100 & \textbf{-4010149} & -4005706.8 & 93.62 & 94 & -4010097 & \textbf{-4006168.6} & 89.49 \\
+kp001 & 2000 & 200 & -7977160 & -7964726.2 & 195.61 & 196 & \textbf{-8008412} & \textbf{-7965889.8} & 192.43 \\
+kp072 & 5000 & 500 & -19170526 & -19063124.4 & 499.44 & 500 & \textbf{-19267440} & \textbf{-19074749.4} & 498.85 \\
+kp015 & 10000 & 1000 & -34470289 & \textbf{-34108893.8} & 998.43 & 999 & \textbf{-34614525} & -34093261.8 & 996.92 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}

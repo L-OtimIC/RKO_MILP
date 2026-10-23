@@ -24,8 +24,14 @@ Usage (from the Scripts folder, after `make clean && make` in Program):
   python3 run_experiment_cuts.py --mh all --runs 10   # each MH of the config alone
   python3 run_experiment_cuts.py --mh BRKGA SA --runs 10
   python3 run_experiment_cuts.py --mh BRKGA --runs 10 --cuts-time-factor 2   # cuts gets 2x MAXTIME
+  python3 run_experiment_cuts.py --mh BRKGA --runs 10 --cuts-time-factor 10 --sensitivity
+
+With --sensitivity, each instance runs the cuts variant first (MAXTIME x --cuts-time-factor)
+and then the original one with MAXTIME = ceil(mean time to best of the cuts variant), i.e.
+the original gets the time the cuts variant needed to reach its final solution.
 """
 import argparse
+import math
 import subprocess
 import sys
 from datetime import datetime
@@ -108,6 +114,9 @@ def main():
                         help="MAXRUNS used with --mh (default: MAXRUNS of the config)")
     parser.add_argument("--cuts-time-factor", type=float, default=1.0,
                         help="multiplies MAXTIME of the cuts variant only (default: 1)")
+    parser.add_argument("--sensitivity", action="store_true",
+                        help="per instance, run cuts first and give the original the mean time "
+                             "to best of the cuts variant as MAXTIME")
     args = parser.parse_args()
 
     config = read_config()
@@ -144,10 +153,15 @@ def main():
     print(f"Output folder: {out_dir}")
 
     done = set()
+    cuts_time_best = {}   # (instance, mh) -> mean time to best of the cuts variant
     if summary_file.exists():
         summary = pd.read_csv(summary_file)
         mh_col = summary["mh"] if "mh" in summary else ["all"] * len(summary)
         done = set(zip(summary["instance"], mh_col, summary["variant"]))
+        for inst, mh, var, tb in zip(summary["instance"], mh_col, summary["variant"],
+                                     summary["time_best_mean"]):
+            if var == "cuts":
+                cuts_time_best[(inst, mh)] = tb
 
     jobs = []
     for mh in mhs:
@@ -155,16 +169,24 @@ def main():
             n = instance_size(inst)
             maxtime = args.time if args.time is not None else max(5, n // 100)
             name = "../" + str(inst.relative_to(ROOT_DIR))
-            for variant in VARIANTS:
+            variants = ["cuts", "original"] if args.sensitivity else list(VARIANTS)
+            for variant in variants:
                 if (name, mh or "all", variant) not in done:
-                    t = round(maxtime * args.cuts_time_factor) if variant == "cuts" else maxtime
+                    if variant == "cuts":
+                        t = round(maxtime * args.cuts_time_factor)
+                    else:
+                        t = None if args.sensitivity else maxtime   # None: set after the cuts run
                     jobs.append((name, n, t, mh, variant))
 
-    total_sec = sum(job[2] * max_runs for job in jobs)
-    print(f"{len(jobs)} jobs pending, estimated time: {total_sec / 3600:.1f} h")
+    # with --sensitivity the original takes at most as long as the cuts variant
+    cuts_t = {(j[0], j[3]): j[2] for j in jobs if j[4] == "cuts"}
+    total_sec = sum((j[2] if j[2] is not None else cuts_t.get((j[0], j[3]), 0)) * max_runs
+                    for j in jobs)
+    print(f"{len(jobs)} jobs pending, estimated time: {'<= ' if args.sensitivity else ''}"
+          f"{total_sec / 3600:.1f} h")
 
     try:
-        run_jobs(jobs, max_runs, summary_file, runs_file, original_config)
+        run_jobs(jobs, max_runs, summary_file, runs_file, original_config, cuts_time_best)
     finally:
         CONFIG_FILE.write_text(original_config)
 
@@ -172,8 +194,10 @@ def main():
           f"\nTable:   python3 make_table_cuts.py {out_dir}")
 
 
-def run_jobs(jobs, max_runs, summary_file, runs_file, original_config):
+def run_jobs(jobs, max_runs, summary_file, runs_file, original_config, cuts_time_best):
     for k, (name, n, maxtime, mh, variant) in enumerate(jobs, 1):
+        if maxtime is None:
+            maxtime = max(1, math.ceil(cuts_time_best[(name, mh or "all")]))
         print(f"[{k}/{len(jobs)}] {name} | {mh or 'all MHs'} | {variant} | "
               f"MAXTIME {maxtime}s x {max_runs} runs", flush=True)
         if mh is not None:
@@ -202,6 +226,9 @@ def run_jobs(jobs, max_runs, summary_file, runs_file, original_config):
             "time_best_mean": time_best,
             "time_total_mean": time_total,
         }]), summary_file)
+
+        if variant == "cuts":
+            cuts_time_best[(name, mh or "all")] = time_best
 
 
 if __name__ == "__main__":

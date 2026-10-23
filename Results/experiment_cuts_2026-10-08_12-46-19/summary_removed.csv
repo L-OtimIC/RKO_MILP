@@ -1,0 +1,3 @@
+instance,n,mh,variant,maxtime,runs,ofv_best,ofv_mean,ofv_std,time_best_mean,time_total_mean
+../Instances/KP/00Uncorrelated/n02000/kp001.txt,2000,BRKGA,original,20,30,-7669412.0,-7526488.4,59810.386055520015,19.905,20.031
+../Instances/KP/00Uncorrelated/n02000/kp001.txt,2000,BRKGA,cuts,20,30,-7646606.0,-7347918.166666667,362159.0045674912,23.324,59.438

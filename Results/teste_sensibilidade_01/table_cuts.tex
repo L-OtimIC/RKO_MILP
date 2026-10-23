@@ -1,0 +1,21 @@
+\begin{table}[htbp]
+\centering
+\caption{Resultados -- RKO com e sem pool de cortes (instâncias 00Uncorrelated)}
+\label{tab:cuts}
+\begin{tabular}{lrrrrrrr}
+\toprule
+ & & \multicolumn{3}{c}{\textbf{RKO original}} & \multicolumn{3}{c}{\textbf{RKO + cortes}} \\
+\cmidrule(lr){3-5} \cmidrule(lr){6-8}
+Instância & $n$ & Melhor & Média & Tempo (s) & Melhor & Média & Tempo (s) \\
+\midrule
+kp009 & 50 & \textbf{-183147.0} & -183106.6 & 0.29 & \textbf{-183147.0} & \textbf{-183147.0} & 1.27 \\
+kp021 & 100 & \textbf{-423448.0} & -423312.2 & 3.46 & \textbf{-423448.0} & \textbf{-423355.0} & 8.40 \\
+kp087 & 200 & -765372.0 & -765094.6 & 16.24 & \textbf{-765459.0} & \textbf{-765330.0} & 24.23 \\
+kp035 & 500 & -1959983.0 & -1958762.9 & 38.01 & \textbf{-1960671.0} & \textbf{-1959592.5} & 41.47 \\
+kp005 & 1000 & -4010097.0 & \textbf{-4006168.6} & 89.49 & \textbf{-4010149.0} & -4005706.8 & 93.62 \\
+kp001 & 2000 & \textbf{-8008412.0} & \textbf{-7965889.8} & 192.43 & -7977160.0 & -7964726.2 & 195.61 \\
+kp072 & 5000 & \textbf{-19267440.0} & \textbf{-19074749.4} & 498.85 & -19170526.0 & -19063124.4 & 499.44 \\
+kp015 & 10000 & \textbf{-34614525.0} & -34093261.8 & 996.92 & -34470289.0 & \textbf{-34108893.8} & 998.43 \\
+\bottomrule
+\end{tabular}
+\end{table}

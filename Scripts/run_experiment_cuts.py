@@ -10,17 +10,22 @@ Examples (from the Scripts folder):
   python3 run_experiment_cuts.py --mh BRKGA --runs 30
   python3 run_experiment_cuts.py --mh BRKGA --runs 10 --cuts-time-factor 2
   python3 run_experiment_cuts.py --mh BRKGA --runs 10 --cuts-time-factor 10 --sensitivity --n 10000
+  python3 run_experiment_cuts.py --mh BRKGA --runs 10 --n 10000 --jobs 5 --pin
   python3 run_experiment_cuts.py --resume ../Results/teste_sensibilidade_01
 
 MAXTIME defaults to max(5, n/100) seconds. With --mh, each MH runs alone (single thread)
 and the config file is temporarily rewritten with that MH and MAXRUNS = --runs.
 With --sensitivity, the cuts variant runs first and the original then gets
 ceil(mean time to best of the cuts variant) as MAXTIME.
+With --jobs N, N instances run at the same time (--pin binds each one to a core).
 """
 import argparse
 import math
+import queue
 import subprocess
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
@@ -35,6 +40,8 @@ CONFIG_FILE = PROGRAM_DIR / "config" / "config_tests.conf"
 VARIANTS = {"original": [], "cuts": ["--cuts"]}
 ALL_MHS = ["BRKGA", "SA", "GRASP", "ILS", "VNS", "PSO", "GA", "LNS", "BRKGA-CS",
            "MultiStart", "IPR"]
+
+lock = threading.Lock()
 
 
 def read_config():
@@ -69,13 +76,28 @@ def instance_size(path):
         return int(f.read(64).split()[0])
 
 
-def read_last_result(results_file):
-    """Last line of Results_RKO*.csv: instance, MHs, runs, ofv_1..ofv_k, best, avg, tBest, tTotal."""
-    lines = [l for l in results_file.read_text().splitlines() if l.strip()]
-    fields = lines[-1].split("\t")
-    n_runs = int(fields[2])
-    ofvs = [float(x) for x in fields[3:3 + n_runs]]
-    return fields[0], ofvs, float(fields[-2]), float(fields[-1])
+def read_result(results_file, instance):
+    """Last line of Results_RKO*.csv for `instance`:
+    instance, MHs, runs, ofv_1..ofv_k, best, avg, tBest, tTotal."""
+    for line in reversed(results_file.read_text().splitlines()):
+        fields = line.split("\t")
+        if fields[0] == instance:
+            n_runs = int(fields[2])
+            ofvs = [float(x) for x in fields[3:3 + n_runs]]
+            return ofvs, float(fields[-2]), float(fields[-1])
+    raise RuntimeError(f"no result for {instance} in {results_file}")
+
+
+def physical_cpus():
+    """One logical CPU per physical core, so pinned jobs never share a core."""
+    out = subprocess.run(["lscpu", "-p=CPU,CORE"], capture_output=True, text=True,
+                         check=True).stdout
+    first = {}
+    for line in out.splitlines():
+        if not line.startswith("#"):
+            cpu, core = map(int, line.split(","))
+            first.setdefault(core, cpu)
+    return sorted(first.values())
 
 
 def append_csv(df, path):
@@ -94,6 +116,8 @@ def parse_args():
                         help="multiplies MAXTIME of the cuts variant")
     parser.add_argument("--sensitivity", action="store_true",
                         help="original gets the mean time to best of the cuts variant")
+    parser.add_argument("--jobs", type=int, default=1, help="instances run at the same time")
+    parser.add_argument("--pin", action="store_true", help="bind each job to a core (taskset)")
     parser.add_argument("--out", help="name of the experiment folder in ../Results")
     parser.add_argument("--resume", type=Path, help="experiment folder to resume")
     return parser.parse_args()
@@ -112,7 +136,7 @@ def main():
     if args.mh is None:
         if args.runs is not None:
             sys.exit("ERROR: --runs requires --mh")
-        mhs = [None]
+        mhs = ["all"]
         max_runs = config.get("MAXRUNS", 0)
     else:
         mhs = config_mhs(original_config) if args.mh == ["all"] else args.mh
@@ -120,6 +144,8 @@ def main():
         if unknown:
             sys.exit(f"ERROR: unknown MH(s) {unknown}, options: {ALL_MHS}")
         max_runs = args.runs or config.get("MAXRUNS", 0)
+    if args.jobs > 1 and len(mhs) > 1:
+        sys.exit("ERROR: --jobs > 1 requires a single --mh")
 
     if args.resume:
         out_dir = args.resume
@@ -149,56 +175,95 @@ def main():
     if not instances:
         sys.exit("ERROR: no instance selected")
 
+    # a chain is the list of jobs of one (instance, mh), run in order by the same worker
     variants = ["cuts", "original"] if args.sensitivity else list(VARIANTS)
-    jobs = []
+    chains = []
     for mh in mhs:
         for path in instances:
             n = instance_size(path)
             name = "../" + str(path.relative_to(ROOT_DIR))
             maxtime = args.time or max(5, n // 100)
+            chain = []
             for variant in variants:
-                if (name, mh or "all", variant) in done:
+                if (name, mh, variant) in done:
                     continue
                 if variant == "cuts":
                     t = round(maxtime * args.cuts_time_factor)
                 else:
                     t = None if args.sensitivity else maxtime
-                jobs.append((name, n, t, mh or "all", variant))
+                chain.append((name, n, t, mh, variant))
+            if chain:
+                chains.append(chain)
 
-    cuts_t = {(j[0], j[3]): j[2] for j in jobs if j[4] == "cuts"}
-    total = sum((j[2] or cuts_t.get((j[0], j[3]), 0)) * max_runs for j in jobs)
-    print(f"{len(jobs)} jobs pending, estimated time: {total / 3600:.1f} h")
+    seconds = []
+    for chain in chains:
+        cuts_t = next((j[2] for j in chain if j[4] == "cuts"), 0)
+        seconds.append(sum((j[2] or cuts_t) * max_runs for j in chain))
+    rounds = math.ceil(len(chains) / args.jobs)
+    print(f"{sum(len(c) for c in chains)} jobs pending in {len(chains)} instances, "
+          f"{args.jobs} at a time, estimated time: "
+          f"{max(seconds, default=0) * rounds / 3600:.1f} h")
+
+    cpus = list(range(args.jobs))
+    if args.pin:
+        cpus = physical_cpus()
+        if len(cpus) < args.jobs:
+            sys.exit(f"ERROR: --jobs {args.jobs} but only {len(cpus)} physical cores")
+        print(f"Pinning to CPUs {cpus[:args.jobs]}")
+    cores = queue.Queue()
+    for cpu in cpus[:args.jobs]:
+        cores.put(cpu)
+    ctx = dict(max_runs=max_runs, summary_file=summary_file, runs_file=runs_file,
+               original_config=original_config, cuts_time_best=cuts_time_best,
+               pin=args.pin, cores=cores, per_job_config=len(mhs) > 1)
 
     try:
-        run_jobs(jobs, max_runs, summary_file, runs_file, original_config, cuts_time_best)
+        if len(mhs) == 1 and mhs[0] != "all":
+            CONFIG_FILE.write_text(single_mh_config(original_config, mhs[0], max_runs))
+        with ThreadPoolExecutor(max_workers=args.jobs) as pool:
+            futures = [pool.submit(run_chain, chain, ctx) for chain in chains]
+            try:
+                for future in futures:
+                    future.result()
+            except BaseException:
+                pool.shutdown(cancel_futures=True)
+                raise
     finally:
         CONFIG_FILE.write_text(original_config)
 
     print(f"\nDone: {out_dir}")
 
 
-def run_jobs(jobs, max_runs, summary_file, runs_file, original_config, cuts_time_best):
-    for k, (name, n, maxtime, mh, variant) in enumerate(jobs, 1):
-        if maxtime is None:
-            maxtime = max(1, math.ceil(cuts_time_best[(name, mh)]))
-        print(f"[{k}/{len(jobs)}] {datetime.now():%d/%m %H:%M} {name} | {mh} | {variant} | "
-              f"MAXTIME {maxtime}s x {max_runs} runs", flush=True)
+def run_chain(chain, ctx):
+    core = ctx["cores"].get()
+    try:
+        for job in chain:
+            run_job(*job, core, ctx)
+    finally:
+        ctx["cores"].put(core)
 
-        if mh != "all":
-            CONFIG_FILE.write_text(single_mh_config(original_config, mh, max_runs))
-        cmd = ["./runRKO", name, str(maxtime)] + VARIANTS[variant]
-        if subprocess.run(cmd, cwd=PROGRAM_DIR, stdout=subprocess.DEVNULL).returncode != 0:
-            sys.exit(f"ERROR: {' '.join(cmd)} failed")
 
-        suffix = "_cuts" if variant == "cuts" else ""
-        instance, ofvs, time_best, time_total = read_last_result(
-            RESULTS_DIR / f"Results_RKO{suffix}.csv")
-        if instance != name:
-            sys.exit(f"ERROR: last result line is for {instance}, expected {name}")
+def run_job(name, n, maxtime, mh, variant, core, ctx):
+    if maxtime is None:
+        maxtime = max(1, math.ceil(ctx["cuts_time_best"][(name, mh)]))
+    with lock:
+        print(f"{datetime.now():%d/%m %H:%M} {name} | {mh} | {variant} | "
+              f"MAXTIME {maxtime}s x {ctx['max_runs']} runs", flush=True)
+        if ctx["per_job_config"] and mh != "all":
+            CONFIG_FILE.write_text(single_mh_config(ctx["original_config"], mh, ctx["max_runs"]))
 
+    cmd = ["./runRKO", name, str(maxtime)] + VARIANTS[variant]
+    if ctx["pin"]:
+        cmd = ["taskset", "-c", str(core)] + cmd
+    if subprocess.run(cmd, cwd=PROGRAM_DIR, stdout=subprocess.DEVNULL).returncode != 0:
+        raise RuntimeError(f"{' '.join(cmd)} failed")
+
+    suffix = "_cuts" if variant == "cuts" else ""
+    with lock:
+        ofvs, time_best, time_total = read_result(RESULTS_DIR / f"Results_RKO{suffix}.csv", name)
         runs = pd.DataFrame({"instance": name, "n": n, "mh": mh, "variant": variant,
                              "maxtime": maxtime, "run": range(1, len(ofvs) + 1), "ofv": ofvs})
-        append_csv(runs, runs_file)
+        append_csv(runs, ctx["runs_file"])
         append_csv(pd.DataFrame([{
             "instance": name, "n": n, "mh": mh, "variant": variant, "maxtime": maxtime,
             "runs": len(ofvs),
@@ -207,10 +272,9 @@ def run_jobs(jobs, max_runs, summary_file, runs_file, original_config, cuts_time
             "ofv_std": runs["ofv"].std(),
             "time_best_mean": time_best,
             "time_total_mean": time_total,
-        }]), summary_file)
-
+        }]), ctx["summary_file"])
         if variant == "cuts":
-            cuts_time_best[(name, mh)] = time_best
+            ctx["cuts_time_best"][(name, mh)] = time_best
 
 
 if __name__ == "__main__":

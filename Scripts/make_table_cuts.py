@@ -112,7 +112,12 @@ def write_sensitivity_table(df, output):
     # factor of the cuts MAXTIME over the default max(5, n/100), if the same for all instances
     cuts = df[df["variant"] == "cuts"]
     factors = set(round(t / max(5, n // 100), 2) for n, t in zip(cuts["n"], cuts["maxtime"]))
-    cap = f"{factors.pop():g}$\\times$ o padrão" if len(factors) == 1 else "elevado"
+    if cuts["maxtime"].nunique() == 1:
+        cap = f"de {int(cuts['maxtime'].iloc[0])} s"
+    elif len(factors) == 1:
+        cap = f"{factors.pop():g}$\\times$ o padrão"
+    else:
+        cap = "elevado"
     mhs = df["mh"].unique() if "mh" in df else ["all"]
     method = "RKO" if list(mhs) == ["all"] else f"{mhs[0]} (1 thread)"
     runs = int(df["runs"].iloc[0])

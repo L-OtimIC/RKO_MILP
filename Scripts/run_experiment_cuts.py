@@ -11,6 +11,8 @@ Examples (from the Scripts folder):
   python3 run_experiment_cuts.py --mh BRKGA --runs 10 --cuts-time-factor 2
   python3 run_experiment_cuts.py --mh BRKGA --runs 10 --cuts-time-factor 10 --sensitivity --n 10000
   python3 run_experiment_cuts.py --mh BRKGA --runs 10 --n 10000 --jobs 5 --pin
+  python3 run_experiment_cuts.py --mh BRKGA --runs 1 --time 3600 --sensitivity --n 10000 \
+      --instances kp015 kp016 kp017 kp018 kp019 --jobs 5 --pin
   python3 run_experiment_cuts.py --resume ../Results/teste_sensibilidade_01
 
 MAXTIME defaults to max(5, n/100) seconds. With --mh, each MH runs alone (single thread)
@@ -109,6 +111,7 @@ def parse_args():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--time", type=int, help="fixed MAXTIME in seconds")
     parser.add_argument("--n", type=int, nargs="+", help="only instances with these sizes")
+    parser.add_argument("--instances", nargs="+", help="only these instances (e.g. kp015 kp016)")
     parser.add_argument("--mh", nargs="+",
                         help="run each MH alone; 'all' = every MH of the config")
     parser.add_argument("--runs", type=int, help="MAXRUNS used with --mh")
@@ -172,6 +175,8 @@ def main():
     instances = sorted(INSTANCES_DIR.glob("*/*.txt"))
     if args.n:
         instances = [p for p in instances if instance_size(p) in args.n]
+    if args.instances:
+        instances = [p for p in instances if p.stem in args.instances]
     if not instances:
         sys.exit("ERROR: no instance selected")
 
